@@ -38,9 +38,11 @@ import os
 import locale
 import base64
 import urllib
+import urllib2
 import json
 import socket
-from urllib2 import urlparse
+from urllib2 import urlparse, HTTPError
+import cookielib
 
 from xmlrpclib import (Binary, Fault, DateTime, dumps, loads, ServerProxy,
         Transport, ProtocolError, MININT, MAXINT)
@@ -51,8 +53,9 @@ from nss.error import NSPRError
 
 from ipalib.backend import Connectible
 from ipalib.constants import LDAP_GENERALIZED_TIME_FORMAT
-from ipalib.errors import (public_errors, UnknownError, NetworkError,
-    KerberosError, XMLRPCMarshallError, JSONError, ConversionError)
+from ipalib.errors import (
+    public_errors, UnknownError, NetworkError, KerberosError,
+    XMLRPCMarshallError, JSONError, ConversionError, InvalidSessionPassword)
 from ipalib import errors, capabilities
 from ipalib.request import context, Connection
 from ipalib.util import get_current_principal
@@ -506,73 +509,22 @@ class SSLTransport(LanguageAwareTransport):
             return self._connection[1]
 
 
-class KerbTransport(SSLTransport):
-    """
-    Handles Kerberos Negotiation authentication to an XML-RPC server.
-    """
-    flags = kerberos.GSS_C_MUTUAL_FLAG | kerberos.GSS_C_SEQUENCE_FLAG
-
-    def _handle_exception(self, e, service=None):
-        (major, minor) = ipautil.get_gsserror(e)
-        if minor[1] == KRB5KDC_ERR_S_PRINCIPAL_UNKNOWN:
-            raise errors.ServiceError(service=service)
-        elif minor[1] == KRB5_FCC_NOFILE:
-            raise errors.NoCCacheError()
-        elif minor[1] == KRB5KRB_AP_ERR_TKT_EXPIRED:
-            raise errors.TicketExpired()
-        elif minor[1] == KRB5_FCC_PERM:
-            raise errors.BadCCachePerms()
-        elif minor[1] == KRB5_CC_FORMAT:
-            raise errors.BadCCacheFormat()
-        elif minor[1] == KRB5_REALM_CANT_RESOLVE:
-            raise errors.CannotResolveKDC()
-        else:
-            raise errors.KerberosError(major=major, minor=minor)
+class SessionTransport(SSLTransport):
 
     def get_host_info(self, host):
         """
-        Two things can happen here. If we have a session we will add
-        a cookie for that. If not we will set an Authorization header.
+        Adds session cookie
         """
-        (host, extra_headers, x509) = SSLTransport.get_host_info(self, host)
+        (host, extra_headers, x509) = LanguageAwareTransport.get_host_info(self, host)
 
         if not isinstance(extra_headers, list):
             extra_headers = []
 
         session_cookie = getattr(context, 'session_cookie', None)
+        root_logger.debug("SessionTransport, using session: " + str(session_cookie))
         if session_cookie:
             extra_headers.append(('Cookie', session_cookie))
-            return (host, extra_headers, x509)
-
-        # Set the remote host principal
-        service = "HTTP@" + host.split(':')[0]
-
-        try:
-            (rc, vc) = kerberos.authGSSClientInit(service, self.flags)
-        except kerberos.GSSError, e:
-            self._handle_exception(e)
-
-        try:
-            kerberos.authGSSClientStep(vc, "")
-        except kerberos.GSSError, e:
-            self._handle_exception(e, service=service)
-
-        for (h, v) in extra_headers:
-            if h == 'Authorization':
-                extra_headers.remove((h, v))
-                break
-
-        extra_headers.append(
-            ('Authorization', 'negotiate %s' % kerberos.authGSSClientResponse(vc))
-        )
-
         return (host, extra_headers, x509)
-
-    def single_request(self, host, handler, request_body, verbose=0):
-        try:
-            return SSLTransport.single_request(self, host, handler, request_body, verbose)
-        finally:
-            self.close()
 
     def store_session_cookie(self, cookie_header):
         '''
@@ -624,6 +576,71 @@ class KerbTransport(SSLTransport):
     def parse_response(self, response):
         self.store_session_cookie(response.getheader('Set-Cookie'))
         return SSLTransport.parse_response(self, response)
+
+
+class KerbTransport(SessionTransport):
+    """
+    Handles Kerberos Negotiation authentication to an XML-RPC server.
+    """
+    flags = kerberos.GSS_C_MUTUAL_FLAG | kerberos.GSS_C_SEQUENCE_FLAG
+
+    def _handle_exception(self, e, service=None):
+        (major, minor) = ipautil.get_gsserror(e)
+        if minor[1] == KRB5KDC_ERR_S_PRINCIPAL_UNKNOWN:
+            raise errors.ServiceError(service=service)
+        elif minor[1] == KRB5_FCC_NOFILE:
+            raise errors.NoCCacheError()
+        elif minor[1] == KRB5KRB_AP_ERR_TKT_EXPIRED:
+            raise errors.TicketExpired()
+        elif minor[1] == KRB5_FCC_PERM:
+            raise errors.BadCCachePerms()
+        elif minor[1] == KRB5_CC_FORMAT:
+            raise errors.BadCCacheFormat()
+        elif minor[1] == KRB5_REALM_CANT_RESOLVE:
+            raise errors.CannotResolveKDC()
+        else:
+            raise errors.KerberosError(major=major, minor=minor)
+
+    def get_host_info(self, host):
+        """
+        Two things can happen here. If we have a session we will add
+        a cookie for that. If not we will set an Authorization header.
+        """
+        (host, extra_headers, x509) = SessionTransport.get_host_info(self, host)
+
+        session_cookie = getattr(context, 'session_cookie', None)
+        if session_cookie:
+            return (host, extra_headers, x509)
+
+        # Set the remote host principal
+        service = "HTTP@" + host.split(':')[0]
+
+        try:
+            (rc, vc) = kerberos.authGSSClientInit(service, self.flags)
+        except kerberos.GSSError, e:
+            self._handle_exception(e)
+
+        try:
+            kerberos.authGSSClientStep(vc, "")
+        except kerberos.GSSError, e:
+            self._handle_exception(e, service=service)
+
+        for (h, v) in extra_headers:
+            if h == 'Authorization':
+                extra_headers.remove((h, v))
+                break
+
+        extra_headers.append(
+            ('Authorization', 'negotiate %s' % kerberos.authGSSClientResponse(vc))
+        )
+
+        return (host, extra_headers, x509)
+
+    def single_request(self, host, handler, request_body, verbose=0):
+        try:
+            return SessionTransport.single_request(self, host, handler, request_body, verbose)
+        finally:
+            self.close()
 
 
 class DelegatedKerbTransport(KerbTransport):
@@ -762,24 +779,46 @@ class RPCClient(Connectible):
         setattr(context, 'session_cookie', session_cookie.http_cookie())
 
         # Form the session URL by substituting the session path into the original URL
-        scheme, netloc, path, params, query, fragment = urlparse.urlparse(original_url)
+        return self.get_session_url(original_url)
+
+    def get_session_url(self, url):
+        scheme, netloc, path, params, query, fragment = urlparse.urlparse(url)
         path = self.session_path
         session_url = urlparse.urlunparse((scheme, netloc, path, params, query, fragment))
-
         return session_url
 
+    def destroy_session(self, principal):
+        if hasattr(context, 'session_cookie'):
+            delattr(context, 'session_cookie')
+            try:
+                delete_persistent_client_session_data(principal)
+            except Exception, e:
+                # This shouldn't happen if we have a session but it isn't fatal.
+                pass
+
     def create_connection(self, ccache=None, verbose=0, fallback=True,
-                          delegate=False, nss_dir=None):
-        try:
-            rpc_uri = self.env[self.env_rpc_uri_key]
+                          delegate=False, nss_dir=None, user=None, password=None):
+        """
+        Create connection
+        """
+
+        setattr(context, 'user', user)
+        setattr(context, 'password', password)
+        use_krb = not user or not password
+
+        rpc_uri = self.env[self.env_rpc_uri_key]
+        if use_krb:
             principal = get_current_principal()
-            setattr(context, 'principal', principal)
+        else:
+            principal = user
+        setattr(context, 'principal', principal)
+        try:
             # We have a session cookie, try using the session URI to see if it
             # is still valid
             if not delegate:
                 rpc_uri = self.apply_session_cookie(rpc_uri)
         except ValueError:
-            # No session key, do full Kerberos auth
+            # No session key, do full auth
             pass
         # This might be dangerous. Use at your own risk!
         if nss_dir:
@@ -790,7 +829,9 @@ class RPCClient(Connectible):
             kw = dict(allow_none=True, encoding='UTF-8')
             kw['verbose'] = verbose
             if url.startswith('https://'):
-                if delegate:
+                if not use_krb:
+                    transport_class = SessionTransport
+                elif delegate:
                     transport_class = DelegatedKerbTransport
                 else:
                     transport_class = KerbTransport
@@ -798,45 +839,40 @@ class RPCClient(Connectible):
                 transport_class = LanguageAwareTransport
             kw['transport'] = transport_class(protocol=self.protocol)
             self.log.info('trying %s' % url)
-            setattr(context, 'request_url', url)
-            serverproxy = self.server_proxy_class(url, **kw)
-            if len(urls) == 1:
-                # if we have only 1 server and then let the
-                # main requester handle any errors. This also means it
-                # must handle a 401 but we save a ping.
-                return serverproxy
             try:
-                command = getattr(serverproxy, 'ping')
-                try:
-                    response = command([], {})
-                except Fault, e:
-                    e = decode_fault(e)
-                    if e.faultCode in errors_by_code:
-                        error = errors_by_code[e.faultCode]
-                        raise error(message=e.faultString)
-                    else:
-                        raise UnknownError(
-                            code=e.faultCode,
-                            error=e.faultString,
-                            server=url,
-                        )
-                # We don't care about the response, just that we got one
+                if use_krb:
+                    setattr(context, 'request_url', url)
+                    serverproxy = self.server_proxy_class(url, **kw)
+                    if len(urls) == 1:
+                        # if we have only 1 server and then let the
+                        # main requester handle any errors. This also means it
+                        # must handle a 401 but we save a ping.
+                        return serverproxy
+                    self.krb_auth(serverproxy, url)
+                else:
+                    self.forms_auth(url, principal, user, password)
+                    # further forms-based communication requires session url
+                    if self.session_path not in url:
+                        url = self.get_session_url(url)
+                    setattr(context, 'request_url', url)
+                    serverproxy = self.server_proxy_class(url, **kw)
                 break
-            except KerberosError, krberr:
-                # kerberos error on one server is likely on all
-                raise errors.KerberosError(major=str(krberr), minor='')
+
             except ProtocolError, e:
                 if hasattr(context, 'session_cookie') and e.errcode == 401:
-                    # Unauthorized. Remove the session and try again.
-                    delattr(context, 'session_cookie')
-                    try:
-                        delete_persistent_client_session_data(principal)
-                    except Exception, e:
-                        # This shouldn't happen if we have a session but it isn't fatal.
-                        pass
-                    return self.create_connection(ccache, verbose, fallback, delegate)
+                    self.destroy_session(principal)
+                    return self.create_connection(
+                        ccache, verbose, fallback, delegate, nss_dir,
+                        user, password)
                 if not fallback:
                     raise
+                serverproxy = None
+            except HTTPError, e:
+                if e.code == 401:
+                    self.destroy_session(principal)
+                if not fallback:
+                    raise
+                self.log.info('Connection to %s failed with %s', url, e)
                 serverproxy = None
             except Exception, e:
                 if not fallback:
@@ -849,6 +885,63 @@ class RPCClient(Connectible):
             raise NetworkError(uri=_('any of the configured servers'),
                 error=', '.join(urls))
         return serverproxy
+
+    def krb_auth(self, serverproxy, url):
+        try:
+            command = getattr(serverproxy, 'ping')
+            try:
+                response = command([], {})
+            except Fault, e:
+                e = decode_fault(e)
+                if e.faultCode in errors_by_code:
+                    error = errors_by_code[e.faultCode]
+                    raise error(message=e.faultString)
+                else:
+                    raise UnknownError(
+                        code=e.faultCode,
+                        error=e.faultString,
+                        server=url,
+                    )
+        except KerberosError, krberr:
+            # kerberos error on one server is likely on all
+            raise errors.KerberosError(major=str(krberr), minor='')
+
+    def forms_auth(self, rpc_url, principal, user, password):
+        """
+        Try forms-based authentication.
+        """
+        (scheme, netloc, path, params, query, fragment) = urlparse.urlparse(rpc_url)
+        login_url = urlparse.urlunparse(
+            (scheme, netloc, 'ipa/session/login_password', '', '', ''))
+        self.log.debug('Forms-based authentication for: %s' % rpc_url)
+        self.log.debug('User: %s' % user)
+
+        headers = {
+            'Content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
+            'Referer': 'https://%s/ipa/xml' % str(netloc),
+        }
+        data = {
+            'user': user,
+            'password': password,
+        }
+        data = urllib.urlencode(data)
+        handlers = [urllib2.HTTPSHandler()]
+        opener = urllib2.build_opener(*handlers)
+        req = urllib2.Request(login_url, data, headers)
+        response = urllib2.urlopen(req)
+        if response.getcode() == 200:
+            self.log.debug("Forms based auth successfull")
+            session_cookie = Cookie.get_named_cookie_from_string(
+                response.info().getheader('Set-Cookie'),
+                COOKIE_NAME,
+                rpc_url
+            )
+            cookie_string = str(session_cookie)
+            update_persistent_client_session_data(principal, cookie_string)
+            ipa_cookie = session_cookie.http_cookie()
+            setattr(context, 'session_cookie', ipa_cookie)
+            self.log.debug("forms_auth session:" + ipa_cookie)
+
 
     def destroy_connection(self):
         if sys.version_info >= (2, 7):
@@ -906,19 +999,21 @@ class RPCClient(Connectible):
             session_cookie = getattr(context, 'session_cookie', None)
             if session_cookie and e.errcode == 401:
                 # Unauthorized. Remove the session and try again.
-                delattr(context, 'session_cookie')
-                try:
-                    principal = getattr(context, 'principal', None)
-                    delete_persistent_client_session_data(principal)
-                except Exception, e:
-                    # This shouldn't happen if we have a session but it isn't fatal.
-                    pass
+                self.destroy_session(getattr(context, 'principal', None))
 
                 # Create a new serverproxy with the non-session URI. If there
                 # is an existing connection we need to save the NSS dbdir so
                 # we can skip an unnecessary NSS_Initialize() and avoid
                 # NSS_Shutdown issues.
-                serverproxy = self.create_connection(os.environ.get('KRB5CCNAME'), self.env.verbose, self.env.fallback, self.env.delegate)
+                serverproxy = self.create_connection(
+                    os.environ.get('KRB5CCNAME'),
+                    self.env.verbose,
+                    self.env.fallback,
+                    self.env.delegate,
+                    getattr(context, 'nss_dir', None),
+                    getattr(context, 'user', None),
+                    getattr(context, 'password', None)
+                )
 
                 dbdir = None
                 current_conn = getattr(context, self.id, None)
