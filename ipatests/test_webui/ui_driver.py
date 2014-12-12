@@ -52,8 +52,11 @@ try:
     NO_YAML = False
 except ImportError:
     NO_YAML = True
-from urllib2 import URLError
+from urllib2 import URLError, urlparse
 from ipaplatform.paths import paths
+from ipapython import certdb, ipautil
+from ipapython.ipautil import run
+from ipalib import x509, api
 
 ENV_MAP = {
     'MASTER': 'ipa_server',
@@ -117,10 +120,31 @@ class UI_driver(object):
         if NO_SELENIUM:
             raise nose.SkipTest('Selenium not installed')
 
+    @property
+    def api(self):
+        """
+        ipalib API
+        """
+        if not self._api:
+            self.init_api()
+        return self._api
+
+    @property
+    def nss_db(self):
+        """
+        NSS DB for IPA lib rpc client
+        """
+        if not self._nss_db:
+            self._nss_db = self._prepare_nss_dir(self.config['ipa_server'])
+        return self._nss_db
+
     def setup(self, driver=None, config=None):
         self.request_timeout = 30
         self.driver = driver
         self.config = config
+        self._env_backup = None
+        self._api = None
+        self._nss_db = None
         if not config:
             self.load_config()
         if not self.driver:
@@ -129,6 +153,9 @@ class UI_driver(object):
 
     def teardown(self):
         self.driver.quit()
+        if self._nss_db:
+            self._nss_db.close()
+        self._restore_env()
 
     def load_config(self):
         """
@@ -166,6 +193,89 @@ class UI_driver(object):
             c['browser'] = DEFAULT_BROWSER
         if 'type' not in c:
             c['type'] = DEFAULT_TYPE
+
+    def _prepare_nss_dir(self, ipa_server):
+        """
+        Create temporary NSS Database with IPA server CA cert. CA cert is
+        downloaded over HTTP from IPA server.
+        """
+
+        # create new NSSDatabase
+        tmp_db = certdb.NSSDatabase()
+        pwd_file = ipautil.write_tmp_file(ipautil.ipa_generate_password())
+        tmp_db.create_db(pwd_file.name)
+
+        # download and add cert
+        url = urlparse.urlunparse(('http', ipautil.format_netloc(ipa_server),
+                                   '/ipa/config/ca.crt', '', '', ''))
+        stdout, stderr, rc = run([paths.BIN_WGET, "-O", "-", url])
+        certs = x509.load_certificate_list(stdout, tmp_db.secdir)
+        ca_certs = [cert.der_data for cert in certs]
+        for i, cert in enumerate(ca_certs):
+            tmp_db.add_cert(cert, 'CA certificate %d' % (i + 1), 'C,,')
+
+        return tmp_db
+
+    def init_api(self):
+        """
+        Initialize ipalib API so we can use API commands in UI tests directly.
+        Uses forms-based authentication. It allows Web UI tests to be run a
+        system which is not an IPA client.
+        """
+
+        self._api = api
+        self._env_backup = {}
+
+        def set_env(key, val):
+            self._env_backup[key] = api.env[key]
+            object.__setattr__(api.env, key, val)
+            api.env._Env__d[key] = val
+
+        ipa_server = self.config['ipa_server']
+        set_env('xmlrpc_uri', "https://" + ipa_server + "/ipa/xml")
+        set_env('jsonrpc_uri', "https://" + ipa_server + "/ipa/json")
+        set_env('realm', self.config["ipa_realm"])
+        set_env('domain', self.config["ipa_domain"])
+        set_env('basedn', ipautil.realm_to_suffix(self.config["ipa_realm"]))
+
+        self.reconnect_api()
+
+    def _restore_env(self):
+        """
+        Revert changes in API env
+        """
+        if not self._env_backup or self._api:
+            return
+
+        env = self.api.env
+
+        def restore(key, val):
+            object.__setattr__(env, key, val)
+            env._Env__d[key] = val
+
+        for k, v in self._env_backup:
+            restore(k, v)
+
+        self._env_backup = None
+
+    def reconnect_api(self, user=None, password=None):
+        """
+        Reconnect rpcclient as different user with password
+        """
+        if not user:
+            user = self.config['ipa_admin']
+        if not password:
+            password = self.config['ipa_password']
+        self.disconnect_api()
+        self.api.Backend.rpcclient.connect(
+            nss_dir=self.nss_db.secdir,
+            user=user,
+            password=password
+        )
+
+    def disconnect_api(self):
+        if self._api and self.api.Backend.rpcclient.isconnected():
+            self.api.Backend.rpcclient.disconnect()
 
     def get_driver(self):
         """
