@@ -463,6 +463,8 @@ class UI_driver(object):
             auth = self.get_login_screen()
             login_tb = self.find("//input[@type='text'][@name='username']", 'xpath', auth, strict=True)
             psw_tb = self.find("//input[@type='password'][@name='password']", 'xpath', auth, strict=True)
+            login_tb.clear()
+            psw_tb.clear()
             login_tb.send_keys(login)
             psw_tb.send_keys(password)
             psw_tb.send_keys(Keys.RETURN)
