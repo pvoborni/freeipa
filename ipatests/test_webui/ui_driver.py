@@ -1382,8 +1382,6 @@ class UI_driver(object):
         if not parent_entity:
             parent_entity = entity
 
-        pkey = data['pkey']
-
         # 1. Open Search Facet
         if navigate:
             self.navigate_to_entity(parent_entity)
@@ -1401,7 +1399,7 @@ class UI_driver(object):
         self.find_record(parent_entity, data, search_facet)
 
         # 3. Navigate to details facet
-        self.navigate_to_record(pkey)
+        self.navigate_to_record(data['pkey'])
         self.assert_facet(entity, default_facet)
         self.wait_for_request(0.5)
         if default_facet != details_facet:
@@ -1422,7 +1420,7 @@ class UI_driver(object):
 
         # 5. Delete record
         if delete:
-            self.delete_record(pkey, data.get('del'))
+            self.delete_record(data['pkey'], data.get('del'))
 
     def add_table_record(self, name, data, parent=None):
         """
