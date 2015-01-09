@@ -1516,22 +1516,22 @@ class UI_driver(object):
         link.click()
         self.wait()
 
-    def enable_action(self):
+    def enable_action(self, action_name='enable'):
         """
         Execute and test 'enable' action panel action.
         """
         title = self.find('.active-facet div.facet-title', By.CSS_SELECTOR, strict=True)
-        self.action_list_action('enable')
+        self.action_list_action(action_name)
         self.wait_for_request(n=2)
         self.assert_no_error_dialog()
         self.assert_class(title, 'disabled', negative=True)
 
-    def disable_action(self):
+    def disable_action(self, action_name='disable'):
         """
         Execute and test 'disable' action panel action.
         """
         title = self.find('.active-facet div.facet-title', By.CSS_SELECTOR, strict=True)
-        self.action_list_action('disable')
+        self.action_list_action(action_name)
         self.wait_for_request(n=2)
         self.assert_no_error_dialog()
         self.assert_class(title, 'disabled')
