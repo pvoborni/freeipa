@@ -329,6 +329,16 @@ return {
                             ]
                         }
                     ]
+                },
+                {
+                    name: 'terminalsection',
+                    label: 'terminal',
+                    $factory: IPA.section,
+                    fields: [
+                        {
+                            $type: 'terminal'
+                        }
+                    ]
                 }
             ],
             actions: [

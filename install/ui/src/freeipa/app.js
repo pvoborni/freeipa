@@ -25,6 +25,7 @@ define([
     './plugins/login',
     './plugins/login_process',
     './plugins/api_browser',
+    './plugins/terminal',
     // entities
     './aci',
     './automember',
