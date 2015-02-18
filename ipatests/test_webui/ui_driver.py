@@ -1709,14 +1709,15 @@ class UI_driver(object):
         else:
             assert not state, "Undo button visible. Field: %s" % field
 
-    def assert_visible(self, selector, parent=None, negative=False):
+    def assert_visible(self, selector, parent=None, negative=False, present=True):
         """
         Assert that element defined by selector is visible
         """
         if not parent:
             parent = self.get_form()
-        el = self.find(selector, By.CSS_SELECTOR, parent, strict=True)
-        visible = el.is_displayed()
+        el = self.find(selector, By.CSS_SELECTOR, parent, strict=present)
+        on_page = el is not None
+        visible = on_page and el.is_displayed()
         if negative:
             assert not visible, "Element visible: %s" % selector
         else:
