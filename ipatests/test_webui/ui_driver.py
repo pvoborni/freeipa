@@ -1260,7 +1260,7 @@ class UI_driver(object):
 
     def add_record(self, entity, data, facet='search', facet_btn='add',
                    dialog_btn='add', delete=False, pre_delete=True,
-                   dialog_name='add', navigate=True):
+                   dialog_name='add', navigate=True, post_add_action=None):
         """
         Add records.
 
@@ -1309,6 +1309,9 @@ class UI_driver(object):
             self.dialog_button_click('ok')
             self.wait_for_request()
 
+        if post_add_action:
+            post_add_action()
+
         # check for error
         self.assert_no_error_dialog()
         self.wait_for_request()
@@ -1353,6 +1356,7 @@ class UI_driver(object):
                    add_facet_btn='add',
                    add_dialog_btn='add',
                    add_dialog_name='add',
+                   post_add_action=None,
                    update_btn='save',
                    breadcrumb=None,
                    navigate=True,
@@ -1389,7 +1393,7 @@ class UI_driver(object):
         # 2. Add record
         self.add_record(parent_entity, data, facet=search_facet, navigate=False,
                         facet_btn=add_facet_btn, dialog_name=add_dialog_name,
-                        dialog_btn=add_dialog_btn
+                        dialog_btn=add_dialog_btn, post_add_action=post_add_action
                         )
 
         # Find
