@@ -89,6 +89,9 @@ mode for every 100 users. As a result there will be a window in which
 users will be added to IPA but will not be members of the default
 user group.
 
+If user's uidNumber is equal to gidNumber then it's assumed that it is a
+user private group.
+
 EXAMPLES:
 
  The simplest migration, accepting all defaults:
@@ -184,14 +187,18 @@ def _pre_migrate_user(ldap, pkey, dn, entry_attrs, failed, config, ctx, **kwargs
     attr_blacklist = ['krbprincipalkey','memberofindirect','memberindirect']
     attr_blacklist.extend(kwargs.get('attr_blacklist', []))
     ds_ldap = ctx['ds_ldap']
-    has_upg = ctx['has_upg']
+    upgs_enabled = ctx['has_upg']
     search_bases = kwargs.get('search_bases', None)
     valid_gids = kwargs['valid_gids']
     invalid_gids = kwargs['invalid_gids']
+    create_upg = (upgs_enabled and entry_attrs.get('uidnumber', []) and
+        entry_attrs['gidnumber'][0] == entry_attrs['uidnumber'][0])
 
+    # We don't want to migrate non-posix users. E.g. it can be some special user.
     if 'gidnumber' not in entry_attrs:
         raise errors.NotFound(reason=_('%(user)s is not a POSIX user') % dict(user=pkey))
-    else:
+    # Check non-UPG GIDs
+    elif not create_upg:
         # See if the gidNumber at least points to a valid group on the remote
         # server.
         if entry_attrs['gidnumber'][0] in invalid_gids:
@@ -215,10 +222,10 @@ def _pre_migrate_user(ldap, pkey, dn, entry_attrs, failed, config, ctx, **kwargs
             except errors.LimitsExceeded as e:
                 api.log.warning('Search limit exceeded searching for GID %s' % entry_attrs['gidnumber'][0])
 
-    # We don't want to create a UPG so set the magic value in description
-    # to let the DS plugin know.
-    entry_attrs.setdefault('description', [])
-    entry_attrs['description'].append(NO_UPG_MAGIC)
+    # If GID is not UPG then don't create UPG
+    if upgs_enabled and not create_upg:
+        entry_attrs.setdefault('description', [])
+        entry_attrs['description'].append(NO_UPG_MAGIC)
 
     # fill in required attributes by IPA
     entry_attrs['ipauniqueid'] = 'autogenerate'
