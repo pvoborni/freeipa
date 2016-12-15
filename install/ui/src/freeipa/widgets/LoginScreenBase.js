@@ -183,7 +183,7 @@ define(['dojo/_base/declare',
                 label_cls: 'col-sm-3 col-md-3 control-label',
                 widget_cls: 'col-sm-9 col-md-9 controls'
             });
-            var form = layout.create(this.get_widgets());
+            var form = layout.create(this.widgets.get_widgets());
             construct.place(form[0], form_cont);
             this.register_caps_check();
 
@@ -217,11 +217,11 @@ define(['dojo/_base/declare',
                 visible: false
             };
 
-            var val_w = this.add_widget(validation_summary);
+            var val_w = this.widgets.add_widget(validation_summary);
             var fields = this.field_specs;
             for (var i=0, l=fields.length; i<l; i++) {
-                var f = this.add_field(fields[i]);
-                var w = this.add_widget(fields[i]);
+                var f = this.fields.add_field(fields[i]);
+                var w = this.widgets.add_widget(fields[i]);
                 new FieldBinder(f, w).bind(true);
                 this.bind_validation(val_w, f);
             }
@@ -286,7 +286,7 @@ define(['dojo/_base/declare',
         display_caps_warning: function(display) {
 
             this.caps_warning = display;
-            var val_summary = this.get_widget('validation');
+            var val_summary = this.widgets.get_widget('validation');
             if (display) {
                 val_summary.add_warning('caps', this.caps_warning_msg);
             } else {
@@ -310,10 +310,10 @@ define(['dojo/_base/declare',
 
         use_fields: function(names) {
 
-            var fields = this.get_fields();
+            var fields = this.fields.get_fields();
             for (var i=0, l=fields.length; i<l; i++) {
                 var f = fields[i];
-                var w = this.get_widget(f.name);
+                var w = this.widgets.get_widget(f.name);
                 var enable = names.indexOf(f.name) >-1;
                 f.set_enabled(enable);
                 w.set_visible(enable);

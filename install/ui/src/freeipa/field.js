@@ -1796,6 +1796,7 @@ field.field_container = IPA.field_container = function(spec) {
             fields[i].widgets_created();
         }
     };
+    // Missing in formMixin -- moved
 
     that.container_add_field = that.add_field;
 

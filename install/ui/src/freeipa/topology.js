@@ -896,6 +896,7 @@ topology.topology_graph_facet_spec = {
     tab_label: 'Topology Graph',
     facet_groups: [topology.search_facet_group],
     facet_group: 'search',
+    tabs_in_sidebar: true,
     actions: ['refresh', 'segment_add', 'segment_del'],
     control_buttons: [
         {
@@ -942,7 +943,7 @@ topology.TopologyGraphFacet = declare([Facet, ActionMixin, HeaderMixin], {
 
     init: function(spec) {
         this.inherited(arguments);
-        var graph = this.get_widget('topology-graph');
+        var graph = this.widgets.get_widget('topology-graph');
         var listener = this.resize_listener.bind(this, graph);
 
         on(this, 'show', function(args) {
@@ -990,7 +991,7 @@ topology.TopologyGraphFacet = declare([Facet, ActionMixin, HeaderMixin], {
     },
 
     refresh: function() {
-        var graph = this.get_widget('topology-graph');
+        var graph = this.widgets.get_widget('topology-graph');
         var size = this.calculate_canvas_size();
         graph.update(size);
     }

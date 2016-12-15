@@ -2,6 +2,7 @@
 /*  Authors:
  *    Endi Sukma Dewata <edewata@redhat.com>
  *    Petr Vobornik <pvoborni@redhat.com>
+ *    Pavel Vomacka <pvomacka@redhat.com>
  *
  * Copyright (C) 2010 Red Hat
  * see file 'COPYING' for use and warranty information
@@ -26,6 +27,7 @@ define([
        'dojo/topic',
        'dojo/Evented',
        './builder',
+       './FieldContainer',
        './ipa',
        './jquery',
        './phases',
@@ -33,9 +35,10 @@ define([
        './rpc',
        './text',
        './field',
-       './widget'],
-       function(lang, keys, topic, Evented, builder, IPA, $, phases, reg, rpc,
-        text, field_mod, widget_mod) {
+       './widget',
+       './WidgetContainer'],
+       function(lang, keys, topic, Evented, builder, FieldContainer,
+        IPA, $, phases, reg, rpc, text, field_mod, widget_mod, WidgetContainer) {
 
 var dialogs = {};
 
@@ -269,9 +272,11 @@ IPA.dialog = function(spec) {
     that.facet = spec.facet;
 
     /** @property {IPA.widget_container} widgets Widgets */
-    that.widgets = IPA.widget_container();
+    // that.widgets = IPA.widget_container();
+    that.widgets = new WidgetContainer(spec, that);
     /** @property {IPA.field_container} fields Fields */
-    that.fields = IPA.field_container({ container: that });
+    // that.fields = IPA.field_container({ container: that });
+    that.fields = new FieldContainer(spec, that);
     /** @property {ordered_map} buttons Buttons */
     that.buttons = $.ordered_map();
     /** @property {details.facet_policies} policies Policies */

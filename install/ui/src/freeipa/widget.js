@@ -44,11 +44,13 @@ define(['dojo/_base/array',
        './rpc',
        './text',
        './util',
+       './WidgetContainer',
        'exports'
        ],
        function(array, lang, construct, Evented, has, keys, on, string,
                 topic, builder, config, datetime, entity_mod, IPA, $,
-                metadata, navigation, phases, reg, rpc, text, util, exp) {
+                metadata, navigation, phases, reg, rpc, text, util, WidgetContainer,
+                exp) {
 
 /**
  * Widget module
@@ -5435,7 +5437,8 @@ IPA.composite_widget = function(spec) {
 
     var that = IPA.widget(spec);
 
-    that.widgets = IPA.widget_container();
+    that.widgets = new WidgetContainer(spec, that)
+    // that.widgets = IPA.widget_container();
 
     that.create = function(container) {
 

@@ -51,7 +51,7 @@ plugins.api_browser.APIBrowserFacet = declare([Facet], {
 
     init: function(spec) {
         this.inherited(arguments);
-        var browser = this.get_widget('apibrowser');
+        var browser = this.widgets.get_widget('apibrowser');
 
         on(this, 'show', function(args) {
 

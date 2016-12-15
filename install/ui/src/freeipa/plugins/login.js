@@ -66,7 +66,7 @@ define(['dojo/_base/declare',
 
         init: function() {
             this.inherited(arguments);
-            var login_screen = this.get_widget('login_screen');
+            var login_screen = this.widgets.get_widget('login_screen');
             var self = this;
             on(login_screen, 'logged_in', function(args) {
                 self.emit('logged_in', args);

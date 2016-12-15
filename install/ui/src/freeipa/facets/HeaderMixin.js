@@ -9,11 +9,12 @@ define(['dojo/_base/declare',
         'dojo/dom-class',
         '../builder',
         '../facet',
+        '../ipa',
         '../text',
         '../widgets/ActionDropdownWidget'
        ],
        function(declare, lang, on, construct, dom_class,
-            builder, mod_facet, text, ActionDropdownWidget) {
+            builder, mod_facet, IPA, text, ActionDropdownWidget) {
 
 
 /**
@@ -25,6 +26,10 @@ define(['dojo/_base/declare',
  * @class facets.HeaderMixin
  */
 var HeaderMixin = declare([], {
+    // definiton of order of called methods in inheritance
+    // '-chains-': {
+    //     create: 'after'
+    // },
 
     /**
      * Facet header
@@ -36,7 +41,13 @@ var HeaderMixin = declare([], {
      * Facet tabs are not displayed when set.
      * @property {boolean}
      */
-    disable_facet_tabs: false,
+    disable_facet_tabs: null,
+
+    /**
+     * Breadcrumb navigation is not displayed when set.
+     * @property {boolean}
+     */
+    disable_breadcrumb: null,
 
     /**
      * Facet tabs in sidebar
@@ -48,7 +59,7 @@ var HeaderMixin = declare([], {
      * This option should be changed when ^^ is removed.
      * @property {boolean}
      */
-    tabs_in_sidebar: true,
+    tabs_in_sidebar: null,
 
     /**
      * Array of actions which are displayed in facet header
@@ -69,7 +80,6 @@ var HeaderMixin = declare([], {
      */
     facet_group: null,
 
-
     /**
      * Create facet's HTML representation
      * NOTE: may be renamed to render
@@ -82,7 +92,7 @@ var HeaderMixin = declare([], {
             construct.empty(this.dom_node);
         } else {
             this.dom_node = construct.create('div', {
-                'class': 'facet',
+                'class': 'facet active-facet container-fluid',
                 name: this.name,
                 'data-name': this.name
             });
@@ -99,16 +109,21 @@ var HeaderMixin = declare([], {
         }).appendTo(this.dom_node);
         var content_cont = row;
 
-        this.sidebar_content_el = $('<div/>', {
-            'class': mod_facet.sidebar_content_width
-        }).appendTo(row);
-        content_cont = $('<div/>', {
-            'class': 'row'
-        }).appendTo(this.sidebar_content_el);
 
-        this.sidebar_el = $('<div/>', {
-            'class': mod_facet.sidebar_class  + mod_facet.sidebar_width
-        }).appendTo(row);
+        if (this.disable_facet_tabs) {
+            dom_class.add(this.dom_node, 'no-facet-tabs');
+        } else if (this.tabs_in_sidebar) {
+            this.sidebar_content_el = $('<div/>', {
+                'class': mod_facet.sidebar_content_width
+            }).appendTo(row);
+            content_cont = $('<div/>', {
+                'class': 'row'
+            }).appendTo(this.sidebar_content_el);
+
+            this.sidebar_el = $('<div/>', {
+                'class': mod_facet.sidebar_class  + mod_facet.sidebar_width
+            }).appendTo(row);
+        }
 
         this.header_container = $('<div/>', {
             'class': 'facet-header col-sm-12'
@@ -212,8 +227,16 @@ var HeaderMixin = declare([], {
         this.header.select_tab();
     },
 
+    get_header: function() {
+        return this.header;
+    },
+
     /** Constructor */
     constructor: function(spec) {
+
+        this.tabs_in_sidebar = spec.tabs_in_sidebar !==undefined ? spec.tabs_in_sidebar : false;
+        this.disable_facet_tabs = spec.disable_facet_tabs;
+        this.disable_breadcrumb = spec.disable_breadcrumb;
 
         this.facet_groups = builder.build('', spec.facet_groups, {}, {
             $factory: mod_facet.facet_group
@@ -253,6 +276,8 @@ var HeaderMixin = declare([], {
             toggle_icon: 'fa fa-angle-down'
         });
         this.action_dropdown.init(this);
+
+        this.facet_create_header = this.create_header;
     }
 });
 

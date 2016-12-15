@@ -10,7 +10,7 @@ define(['dojo/_base/declare',
 
 
 /**
- * Header Mixin
+ * Action Mixin
  *
  * Extension of facet - actions
  *

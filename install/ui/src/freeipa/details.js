@@ -22,8 +22,14 @@
  */
 
 define([
+        'dojo/_base/declare',
         'dojo/_base/lang',
         './builder',
+        './facets/ActionMixin',
+        './facets/EntityMixin',
+        './facets/Facet',
+        './FormMixin',
+        './facets/ExtendedHeaderMixin',
         './ipa',
         './jquery',
         './phases',
@@ -34,8 +40,9 @@ define([
         './widget',
         './facet',
         './add'],
-    function(lang, builder, IPA, $, phases, reg, rpc, su, text, widget_mod,
-             facet_mod) {
+    function(declare, lang, builder, ActionMixin, EntityMixin, Facet, FormMixin,
+            ExtendedHeaderMixin, IPA, $, phases, reg, rpc, su, text,
+            widget_mod, facet_mod) {
 
 /**
  * Details module
@@ -76,7 +83,7 @@ exp.details_builder = IPA.details_builder = function(spec) {
      * Container's field collection
      * @protected
      */
-    that.fields = spec.container.fields;
+     that.fields = spec.container.fields;
 
     /**
      * Widget builder
@@ -511,6 +518,19 @@ exp.details_facet_pre_op = function(spec, context) {
     return spec;
 };
 
+
+/*****************************************************************************/
+
+exp.DetailsFacet = declare([Facet, ActionMixin, ExtendedHeaderMixin, FormMixin, EntityMixin], {
+
+});
+
+
+
+
+
+/*****************************************************************************/
+
 /**
  * Details facet
  * @class details.details_facet
@@ -521,14 +541,15 @@ exp.details_facet = IPA.details_facet = function(spec, no_init) {
 
     spec = spec || {};
 
-    var that = IPA.facet(spec, true);
+    // var that = IPA.facet(spec, true);
+    var that = new exp.DetailsFacet(spec);
 
-    /**
-     * Entity
-     * @property {IPA.entity}
-     */
-    that.entity = IPA.get_entity(spec.entity);
-
+    // /**
+    //  * Entity
+    //  * @property {IPA.entity}
+    //  */
+    // that.entity = IPA.get_entity(spec.entity);
+    // ADDED BY ENTITY MIXIN
 
     /**
      * Name of refresh RPC command
@@ -601,26 +622,27 @@ exp.details_facet = IPA.details_facet = function(spec, no_init) {
      * @property {string}
      */
     that.facet_group = spec.facet_group || 'settings';
+    //
+    // /**
+    //  * Widgets
+    //  * @property {IPA.widget_container}
+    //  */
+    // that.widgets = IPA.widget_container();
 
-    /**
-     * Widgets
-     * @property {IPA.widget_container}
-     */
-    that.widgets = IPA.widget_container();
-
-    /**
-     * Fields
-     * @property {IPA.field_container}
-     */
-    that.fields = IPA.field_container({ container: that });
+    // /**
+    //  * Fields
+    //  * @property {IPA.field_container}
+    //  */
+    // that.fields = IPA.field_container({ container: that });
 
     that.fields.add_field = function(field) {
 
         if (field.dirty_changed) {
-            field.dirty_changed.attach(that.field_dirty_changed);
+            field.dirty_changed.attach(that.fields.field_dirty_changed);
         }
         that.fields.container_add_field(field);
     };
+    // in FormMixin
 
     /**
      * Class for details section, defines layout
@@ -642,14 +664,15 @@ exp.details_facet = IPA.details_facet = function(spec, no_init) {
      */
     that.dirty_changed = IPA.observer();
 
-    /**
-     * Get field
-     * @param {string} name Field name
-     * @returns {IPA.field}
-     */
-    that.get_field = function(name) {
-        return that.fields.get_field(name);
-    };
+    // /**
+    //  * Get field
+    //  * @param {string} name Field name
+    //  * @returns {IPA.field}
+    //  */
+    // that.get_field = function(name) {
+    //     return that.fields.get_field(name);
+    // };
+    // In FormMixin
 
     /**
      * @inheritDoc
@@ -667,16 +690,16 @@ exp.details_facet = IPA.details_facet = function(spec, no_init) {
         that.facet_create(container);
     };
 
-    /**
-     * Create header controls
-     *
-     * - ie control buttons
-     */
-    that.create_controls = function() {
-
-        that.create_control_buttons(that.controls_left);
-        that.create_action_dropdown(that.controls_left);
-    };
+    // /**
+    //  * Create header controls
+    //  *
+    //  * - ie control buttons
+    //  */
+    // that.create_controls = function() {
+    //
+    //     that.create_control_buttons(that.controls_left);
+    //     that.create_action_dropdown(that.controls_left);
+    // };
 
     /**
      * @inheritDoc
@@ -685,7 +708,7 @@ exp.details_facet = IPA.details_facet = function(spec, no_init) {
 
         that.facet_create_header(container);
 
-        that.create_controls();
+        // that.create_controls();
     };
 
     /**
@@ -709,44 +732,45 @@ exp.details_facet = IPA.details_facet = function(spec, no_init) {
         that.header.set_pkey(pkey);
     };
 
-    /**
-     * Field's dirty event handler
-     *
-     * Sets this dirty state
-     *
-     * @protected
-     * @param {boolean} dirty
-     */
-    that.field_dirty_changed = function(dirty) {
+    // /**
+    //  * Field's dirty event handler
+    //  *
+    //  * Sets this dirty state
+    //  *
+    //  * @protected
+    //  * @param {boolean} dirty
+    //  */
+    // that.field_dirty_changed = function(dirty) {
+    //
+    //     var old_dirty = that.dirty;
+    //
+    //     if (dirty) {
+    //         that.dirty = true;
+    //     } else {
+    //         that.dirty = that.is_dirty();
+    //     }
+    //
+    //     if (old_dirty !== that.dirty) {
+    //         that.dirty_changed.notify([that.dirty]);
+    //     }
+    // };
 
-        var old_dirty = that.dirty;
-
-        if (dirty) {
-            that.dirty = true;
-        } else {
-            that.dirty = that.is_dirty();
-        }
-
-        if (old_dirty !== that.dirty) {
-            that.dirty_changed.notify([that.dirty]);
-        }
-    };
-
-    /**
-     * Evaluates if facet is dirty.
-     *
-     * Facet is dirty if any child widget is dirty.
-     * @return {boolean} dirty
-     */
-    that.is_dirty = function() {
-        var fields = that.fields.get_fields();
-        for (var i=0; i<fields.length; i++) {
-            if (fields[i].enabled && fields[i].dirty) {
-                return true;
-            }
-        }
-        return false;
-    };
+    // /**
+    //  * Evaluates if facet is dirty.
+    //  *
+    //  * Facet is dirty if any child widget is dirty.
+    //  * @return {boolean} dirty
+    //  */
+    // that.is_dirty = function() {
+    //     var fields = that.fields.get_fields();
+    //     for (var i=0; i<fields.length; i++) {
+    //         if (fields[i].enabled && fields[i].dirty) {
+    //             return true;
+    //         }
+    //     }
+    //     return false;
+    // };
+    // in FormMixin
 
     /**
      * @inheritDoc
@@ -819,6 +843,7 @@ exp.details_facet = IPA.details_facet = function(spec, no_init) {
             field.reset();
         }
     };
+    // in FormMixin
 
     /**
      * Validate all fields
@@ -833,6 +858,7 @@ exp.details_facet = IPA.details_facet = function(spec, no_init) {
         }
         return valid;
     };
+    // in formMixin
 
     /**
      * Notifies successful update
@@ -1131,7 +1157,7 @@ exp.details_facet = IPA.details_facet = function(spec, no_init) {
     that.clear = function() {
         that.header.clear();
 
-        that.widgets.clear();
+        that.widgets.clear_widgets();
     };
 
     /**
@@ -1163,22 +1189,22 @@ exp.details_facet = IPA.details_facet = function(spec, no_init) {
      */
     that.create_builder = function() {
 
-        var widget_builder = IPA.widget_builder({
-            widget_options: {
-                entity: that.entity,
-                facet: that
-            }
-        });
-        var field_builder = IPA.field_builder({
-            field_options: {
-                entity: that.entity,
-                facet: that
-            }
-        });
+        // var widget_builder = IPA.widget_builder({
+        //     widget_options: {
+        //         entity: that.entity,
+        //         facet: that
+        //     }
+        // });
+        // var field_builder = IPA.field_builder({
+        //     field_options: {
+        //         entity: that.entity,
+        //         facet: that
+        //     }
+        // });
         var section_builder = IPA.section_builder({
             container: that,
-            widget_builder: widget_builder,
-            field_builder: field_builder,
+            widget_builder: that.widgets.get_widget_builder(),
+            field_builder: that.fields.get_fields_builder(),
             section_spec: {
                 $factory: IPA.details_section,
                 layout_css_class: that.section_layout_class
@@ -1187,8 +1213,8 @@ exp.details_facet = IPA.details_facet = function(spec, no_init) {
 
         that.builder = IPA.details_builder({
             container: that,
-            widget_builder: widget_builder,
-            field_builder: field_builder,
+            widget_builder: that.widgets.get_widget_builder(),
+            field_builder: that.fields.get_fields_builder(),
             section_builder: section_builder
         });
     };
@@ -1202,7 +1228,8 @@ exp.details_facet = IPA.details_facet = function(spec, no_init) {
      */
     that.init_details_facet = function() {
 
-        that.init_facet();
+        // FIXME: init is called by sublasses
+        //that.facet_init();
         that.create_builder();
         that.builder.build(spec);
         that.fields.widgets_created();

@@ -1,7 +1,7 @@
 /*  Authors:
- *    Petr Vobornik <pvoborni@redhat.com>
+ *    Pavel Vomacka <pvomacka@redhat.com>
  *
- * Copyright (C) 2013 Red Hat
+ * Copyright (C) 2017 Red Hat
  * see file 'COPYING' for use and warranty information
  *
  * This program is free software; you can redistribute it and/or modify
@@ -21,13 +21,11 @@
 define(['dojo/_base/declare',
         'dojo/_base/lang',
         'dojo/on',
-        '../WidgetContainer',
         '../builder',
         '../ordered-map',
         '../widget'
        ],
-       function(declare, lang, on, WidgetContainer,
-            builder, ordered_map, widget_mod) {
+       function(declare, lang, on, builder, ordered_map, widget_mod) {
 
     /**
      * Container Mixin
@@ -36,13 +34,20 @@ define(['dojo/_base/declare',
      *
      * @class widgets.ContainerMixin
      */
-    var ContainerMixin = declare([], {
+    var ContainerProxyMixin = declare([], {
 
         /**
          * Childs
          * @property {ordered_map}
          */
         widgets: null, //make it private
+
+        /**
+         * Builds widgets on add if not already built
+         *
+         * @property {widget.widget_builder}
+         */
+        widget_builder: null,
 
         /**
          * Raised after `create`
@@ -62,52 +67,52 @@ define(['dojo/_base/declare',
          * @event pre-clear
          */
 
-        // /**
-        //  * Get widget by name
-        //  * @param {string} name
-        //  */
-        // _get_widget: function(name) {
-        //     return this.widgets.widgets.get(name); //fix publix api widget containeru
-        // },
-        //
-        // /**
-        //  * Get all widgets
-        //  * @return {Array.<IPA.widget>}
-        //  */
-        // get_widgets: function() {
-        //     return this.widgets.widgets.values;
-        // },
-        //
-        // /**
-        //  * Add widget
-        //  * @param {IPA.widget|Object|String} widget
-        //  *                           Field or widget spec
-        //  */
-        // add_widget: function(widget) {
-        //     widget.container = this;
-        //     var built = this.widget_builder.build_widget(widget);
-        //
-        //     this.register_widget_listeners(widget);
-        //     if (this.widgets.put) this.widgets.put(widget.name, built);
-        //     else this.widgets.widgets.put(widget.name, built);
-        //     return built;
-        // },
-        //
-        // /**
-        //  * Add multiple widgets
-        //  * @param {Array} widgets
-        //  */
-        // add_widgets: function(widgets) {
-        //
-        //     if (!widgets) return [];
-        //
-        //     var built = [];
-        //     for (var i=0; i<widgets.length; i++) {
-        //         var w = this.add_widget(widgets[i]);
-        //         built.push(w);
-        //     }
-        //     return built;
-        // },
+        /**
+         * Get widget by name
+         * @param {string} name
+         */
+        get_widget: function(name) {
+            return this.widgets.widgets.get(name); //fix publix api widget containeru
+        },
+
+        /**
+         * Get all widgets
+         * @return {Array.<IPA.widget>}
+         */
+        get_widgets: function() {
+            return this.widgets.widgets.values;
+        },
+
+        /**
+         * Add widget
+         * @param {IPA.widget|Object|String} widget
+         *                           Field or widget spec
+         */
+        add_widget: function(widget) {
+            widget.container = this;
+            var built = this.widget_builder.build_widget(widget);
+
+            this.register_widget_listeners(widget);
+            if (this.widgets.put) this.widgets.put(widget.name, built);
+            else this.widgets.widgets.put(widget.name, built);
+            return built;
+        },
+
+        /**
+         * Add multiple widgets
+         * @param {Array} widgets
+         */
+        add_widgets: function(widgets) {
+
+            if (!widgets) return [];
+
+            var built = [];
+            for (var i=0; i<widgets.length; i++) {
+                var w = this.add_widget(widgets[i]);
+                built.push(w);
+            }
+            return built;
+        },
 
         /**
          * Registers listeners for widget events
@@ -140,9 +145,15 @@ define(['dojo/_base/declare',
         /** Constructor */
         constructor: function(spec) {
 
-            this.widgets = new WidgetContainer(spec, this);
+            this.widgets = {}; //FIXME -- don't want to have nested widgets.
+
+            this.widgets.widgets = ordered_map();
+            var builder_spec = spec.widget_builder || widget_mod.widget_builder;
+            this.widget_builder = builder.build(null, builder_spec);
+            this.widget_builder.widget_options =  this.widget_builder.widget_options || {};
+            this.widget_builder.widget_options.parent = this;
         }
     });
 
-    return ContainerMixin;
+    return ContainerProxyMixin;
 });

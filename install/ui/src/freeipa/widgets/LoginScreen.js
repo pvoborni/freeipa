@@ -162,9 +162,9 @@ define(['dojo/_base/declare',
         },
 
         post_create_fields: function() {
-            var u_f = this.get_field('username');
-            var p_f = this.get_field('password');
-            var otp_f = this.get_field('otp');
+            var u_f = this.fields.get_field('username');
+            var p_f = this.fields.get_field('password');
+            var otp_f = this.fields.get_field('otp');
 
             u_f.on('value-change', this.on_form_change.bind(this));
             p_f.on('value-change', this.on_form_change.bind(this));
@@ -174,8 +174,8 @@ define(['dojo/_base/declare',
 
         on_form_change: function(event) {
 
-            var u_f = this.get_field('username');
-            var p_f = this.get_field('password');
+            var u_f = this.fields.get_field('username');
+            var p_f = this.fields.get_field('password');
             var required = !util.is_empty(u_f.get_value()) ||
                     !util.is_empty(p_f.get_value()) || !this.kerberos_enabled();
             u_f.set_required(required);
@@ -192,8 +192,8 @@ define(['dojo/_base/declare',
         },
 
         on_sync: function() {
-            var user = this.get_field('username').get_value()[0];
-            this.get_widget('validation').remove_all('error');
+            var user = this.fields.get_field('username').get_value()[0];
+            this.widgets.get_widget('validation').remove_all('error');
             this.emit('require-otp-sync', { source: this, user: user });
         },
 
@@ -211,12 +211,12 @@ define(['dojo/_base/declare',
 
         login: function() {
 
-            var val_summary = this.get_widget('validation');
+            var val_summary = this.widgets.get_widget('validation');
             val_summary.remove('login');
 
             if (!this.validate()) return;
 
-            var login = this.get_field('username').get_value()[0];
+            var login = this.fields.get_field('username').get_value()[0];
             if (util.is_empty(login) && this.kerberos_enabled()) {
                 this.login_with_kerberos();
             } else {
@@ -230,7 +230,7 @@ define(['dojo/_base/declare',
                 if (status === 200) {
                     this.emit('logged_in');
                 } else {
-                    var val_summary = this.get_widget('validation');
+                    var val_summary = this.widgets.get_widget('validation');
                     val_summary.add_error('login', this.krb_auth_failed);
                 }
             }.bind(this));
@@ -240,9 +240,9 @@ define(['dojo/_base/declare',
 
             if(!this.password_enabled()) return;
 
-            var val_summary = this.get_widget('validation');
-            var login = this.get_field('username').get_value()[0];
-            var password_f = this.get_field('password');
+            var val_summary = this.widgets.get_widget('validation');
+            var login = this.fields.get_field('username').get_value()[0];
+            var password_f = this.fields.get_field('password');
             var password = password_f.get_value()[0];
 
             IPA.login_password(login, password).then(
@@ -284,17 +284,17 @@ define(['dojo/_base/declare',
 
         login_and_reset: function() {
 
-            var val_summary = this.get_widget('validation');
+            var val_summary = this.widgets.get_widget('validation');
             val_summary.remove('login');
 
             if (!this.validate()) return;
 
-            var psw_f = this.get_field('password');
-            var psw_f2 = this.get_field('current_password');
-            var otp_f = this.get_field('otp');
-            var new_f = this.get_field('new_password');
-            var ver_f = this.get_field('verify_password');
-            var username_f = this.get_field('username');
+            var psw_f = this.fields.get_field('password');
+            var psw_f2 = this.fields.get_field('current_password');
+            var otp_f = this.fields.get_field('otp');
+            var new_f = this.fields.get_field('new_password');
+            var ver_f = this.fields.get_field('verify_password');
+            var username_f = this.fields.get_field('username');
 
             var psw = psw_f2.get_value()[0] || psw_f.get_value()[0];
             var otp = otp_f.get_value()[0];
@@ -369,17 +369,17 @@ define(['dojo/_base/declare',
         show_login_view: function() {
             this.set_login_aside_text();
             if (auth.current.expired) {
-                var val_summary = this.get_widget('validation');
+                var val_summary = this.widgets.get_widget('validation');
                 val_summary.add_info('expired', this.expired_msg);
             }
             this.set_visible_buttons(['cert_auth', 'sync', 'login']);
             if (this.password_enabled()) {
                 this.use_fields(['username', 'password']);
-                var username_f = this.get_field('username');
+                var username_f = this.fields.get_field('username');
                 if (username_f.get_value()[0]) {
-                    this.get_widget('password').focus_input();
+                    this.widgets.get_widget('password').focus_input();
                 } else {
-                    this.get_widget('username').focus_input();
+                    this.widgets.get_widget('username').focus_input();
                 }
             } else {
                 this.use_fields([]);
@@ -393,12 +393,12 @@ define(['dojo/_base/declare',
             this.set_visible_buttons(['cancel', 'reset_and_login']);
             this.use_fields(['username_r', 'current_password', 'otp', 'new_password', 'verify_password']);
 
-            var val_summary = this.get_widget('validation');
+            var val_summary = this.widgets.get_widget('validation');
 
             var u_f = this.fields.get('username');
             var u_r_f = this.fields.get('username_r');
             u_r_f.set_value(u_f.get_value());
-            this.get_widget('current_password').focus_input();
+            this.widgets.get_widget('current_password').focus_input();
         },
 
         set_login_aside_text: function() {

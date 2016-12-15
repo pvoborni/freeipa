@@ -25,14 +25,14 @@ define(['dojo/_base/declare',
         'dojo/dom-class',
         'dojo/on',
         '../builder',
-        '../facet',
+        '../FacetState',
         '../ipa', // for util functions
         '../jquery',
         '../text',
         '../widgets/ContainerMixin'
        ],
        function(declare, lang, Evented, construct, dom_class,
-                on, builder, mod_facet, IPA, $, text, ContainerMixin) {
+                on, builder, FacetState, IPA, $, text, ContainerMixin) {
 
     /**
      * Base class of Facet
@@ -89,6 +89,13 @@ define(['dojo/_base/declare',
         active_class: 'active',
 
         /**
+         * Data which are result of RPC commad.
+         *
+         * @property {Object} data
+         */
+        data: null,
+
+        /**
          * dom_node of container
          * Suppose to contain dom_node of this and other facets.
          * @property {jQuery}
@@ -131,8 +138,124 @@ define(['dojo/_base/declare',
          */
         state: null,
 
+        /**
+         * Raised when facet gets updated
+         * @event
+         */
+        on_update: null,
+
+        /**
+         * Hard override for `needs_update()` logic. When set, `needs_update`
+         * should always return this value.
+         * @property {boolean}
+         */
+        _needs_update: null,
+
+        /**
+         * Timeout[s] from `last_modified` after which facet should be expired
+         * @property {number} expire_timeout=600
+         */
+        expire_timeout: null,
+
+        /**
+         * Last time when facet was updated.
+         * @property {Date}
+         */
+        last_updated: null,
+
+        /**
+         * Marks facet as expired - needs update
+         *
+         * Difference between `_needs_update` is that `expired_flag` should be
+         * cleared after update.
+         *
+         * @property {boolean}
+         */
+        expired_flag: null,
+
+        /**
+         * Place where data from RPC command will be stored.
+         *
+         * @property {Object}
+         */
+        data: null,
+
+        /**
+         * Policies
+         * @property {IPA.facet_policies}
+         */
+        policies: null,
+
+        /**
+         * Raised after `load()`
+         * @event
+         */
+        post_load: null,
+
+        /**
+         * Name of containing facet of containing entity
+         *
+         * A guide for breadcrumb navigation
+         *
+         * @property {string}
+         */
+        containing_facet: null,
+
+        redirect_error_codes: [4001],
+
+        /**
+         * Check if facet needs update
+         *
+         * That means if:
+         *
+         * - new state (`state` or supplied state) is different that old_state
+         *   (`old_state`)
+         * - facet is expired
+         *   - `expired_flag` is set or
+         *   - expire_timeout takes effect
+         * - error is displayed
+         *
+         *
+         * @param {Object} [new_state] supplied state
+         * @return {boolean} needs update
+         */
+        needs_update: function(new_state) {
+
+            if (this._needs_update !== undefined) return this._needs_update;
+
+            new_state = new_state || this.state.clone();
+            var needs_update = false;
+
+            if (this.expire_timeout && this.expire_timeout > 0) {
+
+                if (!this.last_updated) {
+                    needs_update = true;
+                } else {
+                    var now = Date.now();
+                    needs_update = (now - this.last_updated) > this.expire_timeout * 1000;
+                }
+            }
+
+            needs_update = needs_update || this.expired_flag;
+            needs_update = needs_update || this.error_displayed();
+
+            needs_update = needs_update || this.state_diff(this.old_state || {}, new_state);
+
+            return needs_update;
+        },
+
         get_full_name: function() {
             return this.name;
+        },
+
+        load: function(data) {
+            this.data = data;
+
+            // check whether the facet have header. TODO: chech whether we can have
+            // facet without header
+            if (this.header) {
+                this.header.load(data);
+            }
         },
 
         /**
@@ -177,6 +300,21 @@ define(['dojo/_base/declare',
             diff = check_diff(a,b, checked);
             diff = diff || check_diff(b,a, checked);
             return diff;
+        },
+
+        /**
+         * Sets expire flag
+         */
+        set_expired_flag: function() {
+            this.expired_flag = true;
+        },
+
+        /**
+         * Clears `expired_flag` and resets `last_updated`
+         */
+        clear_expired_flag: function() {
+            this.expired_flag = false;
+            this.last_updated = Date.now();
         },
 
         /**
@@ -241,6 +379,16 @@ define(['dojo/_base/declare',
         },
 
         /**
+         * Check if error is displayed (instead of content)
+         *
+         * @return {boolean} error visible
+         */
+        error_displayed: function() {
+            return this.error_container &&
+                        this.error_container.css('display') === 'block';
+        }, //FIXME: Error container does not exists. - YES IN FACETS LIKE LOGIN
+
+        /**
          * Create facet's HTML representation
          * NOTE: may be renamed to render
          */
@@ -261,6 +409,7 @@ define(['dojo/_base/declare',
             if (this.container_node) {
                 construct.place(this.dom_node, this.container_node);
             }
+
             this.children_node = this.dom_node;
             return this.dom_node;
         },
@@ -269,7 +418,7 @@ define(['dojo/_base/declare',
          * Render child widgets
          */
         render_children: function() {
-            var widgets = this.get_widgets();
+            var widgets = this.widgets.get_widgets();
 
             for (var i=0;i<widgets.length; i++) {
                 var widget = widgets[i];
@@ -286,6 +435,23 @@ define(['dojo/_base/declare',
         },
 
         /**
+         * Start refresh
+         *
+         * - get up-to-date data
+         * - load the data
+         * @abstract
+         */
+        refresh: function() {
+        },
+
+        /**
+         * Clear all widgets
+         * @abstract
+         */
+        clear: function() {
+        },
+
+        /**
          * Show facet
          *
          * - mark itself as active facet
@@ -299,8 +465,37 @@ define(['dojo/_base/declare',
                 construct.place(this.dom_node, this.container_node);
             }
 
+            var state = this.state.clone();
+            var needs_update = this.needs_update(state);
+            this.old_state = state;
+
+            if (needs_update) {
+                this.clear();
+            }
+
             dom_class.add(this.dom_node, 'active-facet');
+
+            this.show_content();
+            // FIXME: should be used -- login facet does not have header
+            if (this.header) this.header.select_tab();
+
+            if (needs_update) {
+                this.refresh();
+            }
+
             this.emit('show', { source: this });
+        },
+
+        /**
+         * Show content container and hide error container.
+         *
+         * Opposite to `show_error`.
+         * @protected
+         */
+        show_content: function() {
+            // FIXME: should be used -- content is not on load facet
+            if(this.content) this.content.css('display', 'block');
+            if(this.error_container) this.error_container.css('display', 'none');
         },
 
         /**
@@ -321,8 +516,32 @@ define(['dojo/_base/declare',
          * @param {Object} spec
          */
         init: function(spec) {
-
-            this.add_widgets(spec.widgets || []);
+            this.widgets.add_widgets(spec.widgets || []);
+            // this.actions.init(this);
+            // this.header.init();
+            // on(this.state, 'set', this.on_state_set);
+            //
+            // var buttons_spec = {
+            //     $factory: IPA.control_buttons_widget,
+            //     name: 'control-buttons',
+            //     css_class: 'control-buttons',
+            //     buttons: spec.control_buttons
+            // };
+            //
+            // this.control_buttons = IPA.build(buttons_spec);
+            // this.control_buttons.init(this);
+            //
+            // this.action_dropdown = IPA.build({
+            //     $ctor: ActionDropdownWidget,
+            //     action_names: this.header_actions,
+            //     name: 'facet_actions',
+            //     'class': 'dropdown facet-actions',
+            //     right_aligned: true,
+            //     toggle_text: text.get('@i18n:actions.title') + ' ',
+            //     toggle_class: 'btn btn-default',
+            //     toggle_icon: 'fa fa-angle-down'
+            // });
+            // this.action_dropdown.init(this);
         },
 
         can_leave: function() {
@@ -331,6 +550,62 @@ define(['dojo/_base/declare',
 
         show_leave_dialog: function(callback) {
             window.console.warning('Unimplemented');
+        },
+
+        /**
+         * Get facet based on `redirect_info` and {@link
+         * entity.entity.redirect_facet}
+         * @return {facet.facet} facet to be redirected to
+         */
+        get_redirect_facet: function() {
+
+            if (!this.entity) return;
+
+            var entity = this.entity;
+            while (entity.containing_entity) {
+                entity = entity.get_containing_entity();
+            }
+            var facet_name = this.entity.redirect_facet;
+            var entity_name = entity.name;
+            var facet;
+
+            if (this.redirect_info) {
+                entity_name = this.redirect_info.entity || entity_name;
+                facet_name = this.redirect_info.facet || facet_name;
+            }
+
+            if (!facet) {
+                entity = IPA.get_entity(entity_name);
+                facet = entity.get_facet(facet_name);
+            }
+
+            return facet;
+        },
+
+        /**
+         * Redirect to redirection target
+         */
+        redirect: function() {
+
+            var facet = this.get_redirect_facet();
+            if (!facet) return;
+            navigation.show(facet);
+        },
+
+        /**
+         * Redirect if error thrown is
+         * @protected
+         */
+        redirect_error: function(error_thrown) {
+
+            /*If the error is in talking to the server, don't attempt to redirect,
+              as there is nothing any other facet can do either. */
+            for (var i=0; i<this.redirect_error_codes.length; i++) {
+                if (error_thrown.code === this.redirect_error_codes[i]) {
+                    this.redirect();
+                    return;
+                }
+            }
         },
 
         /** Constructor */
@@ -348,8 +623,25 @@ define(['dojo/_base/declare',
             if (spec.requires_auth !== undefined) {
                 this.requires_auth = spec.requires_auth;
             }
-            this.state = new mod_facet.FacetState();
+            this.state = new FacetState();
+            this.on_update = IPA.observer();
+            this._needs_update = spec.needs_update;
+            this.expire_timeout = spec.expire_timeout || 600; //[seconds]
+            this.expired_flag = true;
+
             on(this.state, 'set', this.on_state_set.bind(this));
+            this.policies = IPA.facet_policies({
+                container: this,
+                policies: spec.policies
+            });
+            this.post_load = IPA.observer();
+            this.containing_facet = spec.containing_facet;
+
+            // FIXME: not nice
+            this.facet_show = this.show;
+            this.facet_create = this.create;
+            this.facet_load = this.load;
+            this.facet_init = this.init;
         }
     });
 

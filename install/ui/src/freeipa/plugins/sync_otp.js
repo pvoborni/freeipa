@@ -64,7 +64,7 @@ define(['dojo/_base/declare',
 
         init: function() {
             this.inherited(arguments);
-            var sync_screen = this.get_widget('sync_screen');
+            var sync_screen = this.widgets.get_widget('sync_screen');
             var self = this;
             on(sync_screen, 'sync-success', function(args) {
                 self.emit('sync-success', args);
@@ -80,7 +80,7 @@ define(['dojo/_base/declare',
         },
 
         set_user: function(user) {
-            var sync_screen = this.get_widget('sync_screen');
+            var sync_screen = this.widgets.get_widget('sync_screen');
             sync_screen.set('user', user);
         }
     });

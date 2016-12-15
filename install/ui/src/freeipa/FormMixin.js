@@ -20,11 +20,11 @@
 
 define(['dojo/_base/declare',
         'dojo/on',
-        './builder',
         './field',
+        './FieldContainer',
         './ordered-map'
        ],
-       function(declare, on, builder, field_mod, ordered_map) {
+       function(declare, on, field_mod, FieldContainer, ordered_map) {
 
     /**
      * Form mixin
@@ -45,17 +45,11 @@ define(['dojo/_base/declare',
         dirty: null,
 
         /**
-         * Fields
-         * @property {ordered_map}
+         * FieldContainer
+         * @property {Object FieldContainer}
          */
         fields: null,
 
-        /**
-         * Builds fields on add if not already built
-         *
-         * @property {field.field_builder}
-         */
-        field_builder: null,
 
         /**
          * Raised when `dirty` state changes
@@ -68,82 +62,6 @@ define(['dojo/_base/declare',
          */
 
         /**
-         * Get field by name
-         * @param {string} name
-         */
-        get_field: function(name) {
-            return this.fields.get(name);
-        },
-
-        /**
-         * Get all fields
-         * @return {Array.<IPA.field>}
-         */
-        get_fields: function() {
-            return this.fields.values;
-        },
-
-        /**
-         * Add field
-         * @param {IPA.field|Object|String} field
-         *                           Field or field spec
-         */
-        add_field: function(field) {
-            field.container = this;
-            var built = this.field_builder.build_field(field);
-            this.register_field_listeners(built);
-            this.fields.put(field.name, built);
-            return built;
-        },
-
-        /**
-         * Add multiple fields
-         * @param {Array} fields
-         */
-        add_fields: function(fields) {
-
-            if (!fields) return [];
-
-            var built = [];
-            for (var i=0; i<fields.length; i++) {
-                var f = this.add_field(fields[i]);
-                built.push(f);
-            }
-            return built;
-        },
-
-        /**
-         * Registers listeners for field events
-         * @param {IPA.field} field
-         * @protected
-         */
-        register_field_listeners: function(field) {
-
-            on(field, 'dirty-change', this.on_field_dirty_change.bind(this));
-        },
-
-        /**
-         * Field's dirty-change handler
-         * @param {Object} event
-         * @protected
-         * @fires dirty-change
-         */
-        on_field_dirty_change: function(event) {
-
-            var old = this.dirty;
-
-            if (event.dirty) {
-                this.dirty = true;
-            } else {
-                this.dirty = this.is_dirty();
-            }
-
-            if (old !== this.dirty) {
-                this.emit('dirty-change', { source: this, dirty: this.dirty });
-            }
-        },
-
-        /**
          * Perform check if any field is dirty
          *
          * @return {boolean}
@@ -151,13 +69,7 @@ define(['dojo/_base/declare',
          *                  - false: all field's aren't dirty
          */
         is_dirty: function() {
-            var fields = this.get_fields();
-            for (var i=0; i<fields.length; i++) {
-                if (fields[i].enabled && fields[i].dirty) {
-                    return true;
-                }
-            }
-            return false;
+            return this.fields._is_dirty();
         },
 
         /**
@@ -166,11 +78,7 @@ define(['dojo/_base/declare',
          */
         reset: function() {
 
-            var fields = this.get_fields();
-            for (var i=0; i<fields.length; i++) {
-                var field = fields[i];
-                field.reset();
-            }
+            this.field._reset();
 
             this.emit('reset', { source: this });
         },
@@ -180,22 +88,14 @@ define(['dojo/_base/declare',
          * @return {boolean} true when all fields are valid
          */
         validate: function() {
-            var valid = true;
-            var fields = this.get_fields();
-            for (var i=0; i<fields.length; i++) {
-                var field = fields[i];
-                valid = field.validate() && field.validate_required() && valid;
-            }
-            return valid;
+            return this.fields._validate();
         },
 
         /** Constructor */
         constructor: function(spec) {
+            this.fields = new FieldContainer(spec, this);
 
-            this.fields = ordered_map();
-            var builder_spec = spec.field_builder || field_mod.field_builder;
-            this.field_builder = builder.build(null, builder_spec);
-            this.dirty = false;
+            this.container_add_field = this.add_field;
         }
     });
 
