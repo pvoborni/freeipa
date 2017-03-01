@@ -208,8 +208,15 @@ define(['dojo/_base/declare',
             this._widgets = $.ordered_map();
             this.new_container_for_child = spec.new_container_for_child !== undefined ?
             spec.new_container_for_child : true;
+            var facet = spec.facet || container;
+            var builder_spec = {
+                widget_options: {
+                    entity: spec.entity,
+                    facet: facet
+                }
+            };
 
-            var builder_spec = spec.widget_builder || widget_mod.widget_builder;
+            builder_spec.$factory = spec.widget_builder || widget_mod.widget_builder;
             this.widget_builder = builder.build(null, builder_spec);
             this.widget_builder.widget_options = this.widget_builder.widget_options || {};
             this.widget_builder.widget_options.parent = this.container;

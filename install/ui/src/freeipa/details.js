@@ -38,11 +38,12 @@ define([
         './spec_util',
         './text',
         './widget',
+        './widgets/ContainerMixin',
         './facet',
         './add'],
     function(declare, lang, builder, ActionMixin, EntityMixin, Facet, FormMixin,
             ExtendedHeaderMixin, IPA, $, phases, reg, rpc, su, text,
-            widget_mod, facet_mod) {
+            widget_mod, ContainerMixin, facet_mod) {
 
 /**
  * Details module
@@ -521,7 +522,7 @@ exp.details_facet_pre_op = function(spec, context) {
 
 /*****************************************************************************/
 
-exp.DetailsFacet = declare([Facet, ActionMixin, ExtendedHeaderMixin, FormMixin, EntityMixin], {
+exp.DetailsFacet = declare([Facet, ActionMixin, ExtendedHeaderMixin, EntityMixin, FormMixin, ContainerMixin], {
 
 });
 

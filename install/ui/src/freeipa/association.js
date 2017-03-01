@@ -549,7 +549,7 @@ IPA.association_table_widget = function (spec) {
     };
 
     that.add_handler = function() {
-        var facet = that.entity.get_facet();
+        var facet = that.facet;
 
         if (facet.is_dirty()) {
             var dialog = IPA.dirty_dialog({

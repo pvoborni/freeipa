@@ -176,7 +176,14 @@ define(['dojo/_base/declare',
             console.log("Constructor of FieldContainer")
             this._fields = $.ordered_map();
             this.container = container;
-            var builder_spec = spec.field_builder || field_mod.field_builder;
+            var builder_spec = {
+                field_options: {
+                    entity: this.container.entity,
+                    facet: this.container
+                },
+            };
+
+            builder_spec.$factory = field_mod.field_builder;
             this.field_builder = builder.build(null, builder_spec);
             this.dirty = false;
             console.log('Constructor of FieldContainer - END')
