@@ -664,7 +664,6 @@ class UI_driver(object):
 
     def _button_click(self, selector, parent, name=''):
         btn = self.find(selector, By.CSS_SELECTOR, parent, strict=True)
-        ActionChains(self.driver).move_to_element(btn).perform()
         disabled = btn.get_attribute("disabled")
         assert btn.is_displayed(), 'Button is not displayed: %s' % name
         assert not disabled, 'Invalid button state: disabled. Button: %s' % name
