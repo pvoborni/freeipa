@@ -40,7 +40,40 @@ class test_range(range_tasks):
         """
         self.init_app()
         self.get_shifts()
-        self.basic_crud(ENTITY, self.get_data(PKEY))
+        self.basic_crud(ENTITY, self.get_data(PKEY), mod=False)
+
+    @screenshot
+    def test_mod(self):
+        """
+        Test mod operating in a new range
+        """
+
+        self.init_app()
+        self.navigate_to_entity(ENTITY)
+        self.get_shifts()
+
+        # creating record
+        add = self.get_add_data(PKEY)
+        data = self.get_data(PKEY, add_data=add)
+
+        self.add_record(ENTITY, data, facet='search', navigate=False,
+                        facet_btn='add', dialog_name='add',
+                        dialog_btn='add')
+        self.navigate_to_record(PKEY)
+
+        # changing idrange and trying to save it
+        self.fill_fields(data['mod'], undo=True)
+        self.assert_facet_button_enabled('save')
+        self.facet_button_click('save')
+        self.wait_for_request(n=2)
+
+        dialog = self.get_last_error_dialog()
+        assert ("can not be used to change ID allocation for local IPA domain"
+                in dialog.text)
+        self.dialog_button_click('cancel')
+        self.navigate_to_entity(ENTITY)
+        self.wait_for_request()
+        self.delete_record(PKEY)
 
     @screenshot
     def test_types(self):
