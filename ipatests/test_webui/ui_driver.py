@@ -41,7 +41,6 @@ try:
     from selenium.common.exceptions import InvalidElementStateException
     from selenium.common.exceptions import StaleElementReferenceException
     from selenium.common.exceptions import WebDriverException
-    from selenium.webdriver.common.action_chains import ActionChains
     from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
     from selenium.webdriver.common.keys import Keys
     from selenium.webdriver.common.by import By
@@ -976,7 +975,10 @@ class UI_driver(object):
         input_s = s + " tbody td input[value='%s']" % pkey
         checkbox = self.find(input_s, By.CSS_SELECTOR, parent, strict=True)
         try:
-            ActionChains(self.driver).move_to_element(checkbox).click().perform()
+            # workaround for https://github.com/mozilla/geckodriver/issues/776
+            self.driver.execute_script('arguments[0].scrollIntoView(true);',
+                                       checkbox)
+            checkbox.click()
         except WebDriverException as e:
             assert False, 'Can\'t click on checkbox label: %s \n%s' % (s, e)
         self.wait()
