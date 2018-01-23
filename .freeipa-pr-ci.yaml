@@ -38,7 +38,7 @@ jobs:
       class: RunWebuiTests
       args:
         build_url: '{fedora-27/build_url}'
-        test_suite: test_webui/
+        test_suite: test_webui/test_user.py
         template: *ci-master-f27
         timeout: 8000
         topology: *ipaserver
