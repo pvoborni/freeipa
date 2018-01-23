@@ -1288,6 +1288,7 @@ class UI_driver(object):
                    update_btn='save',
                    breadcrumb=None,
                    navigate=True,
+                   mod=True,
                    delete=True):
         """
         Basic CRUD operation sequence.
@@ -1338,7 +1339,7 @@ class UI_driver(object):
         self.validate_fields(data.get('add_v'))
 
         # 4. Mod values
-        if data.get('mod'):
+        if mod and data.get('mod'):
             self.mod_record(entity, data, details_facet, update_btn)
             self.validate_fields(data.get('mod_v'))
 
