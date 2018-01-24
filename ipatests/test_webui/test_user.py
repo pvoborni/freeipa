@@ -311,7 +311,14 @@ class test_user(user_tasks):
 
         #re-login as new user
         self.logout()
-        self.init_app(user.PKEY, pwd)
+        self.wait(3)
+
+        self.wait_for_loaded_files()
+        self.wait(3)
+        self.login(user.PKEY, pwd)
+        self.wait_for_request(n=5)
+
+        #self.init_app(user.PKEY, pwd)
 
         header = self.find('.navbar-pf', By.CSS_SELECTOR)
         self.assert_text(

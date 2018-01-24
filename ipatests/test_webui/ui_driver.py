@@ -349,47 +349,51 @@ class UI_driver(object):
         # metadata + default page
         self.wait_for_request(n=5)
 
+    def wait_for_loaded_files(self):
+        """
+        Wait for browser to load files
+        """
+        runner = self
+        WebDriverWait(self.driver, 10).until(lambda d: runner.files_loaded())
+
     def load(self):
         """
         Navigate to Web UI first page and wait for loading of all dependencies.
         """
         self.driver.get(self.get_base_url())
-        runner = self
-        WebDriverWait(self.driver, 10).until(lambda d: runner.files_loaded())
+        self.wait_for_loaded_files()
 
     def login(self, login=None, password=None, new_password=None):
         """
         Log in if user is not logged in.
         """
         self.wait_for_request(n=2)
-        if self.logged_in():
-            self.logout()
+        if not self.logged_in():
+            if not login:
+                login = self.config['ipa_admin']
+            if not password:
+                password = self.config['ipa_password']
+            if not new_password:
+                new_password = password
 
-        if not login:
-            login = self.config['ipa_admin']
-        if not password:
-            password = self.config['ipa_password']
-        if not new_password:
-            new_password = password
-
-        auth = self.get_login_screen()
-        login_tb = self.find("//input[@type='text'][@name='username']", 'xpath', auth, strict=True)
-        psw_tb = self.find("//input[@type='password'][@name='password']", 'xpath', auth, strict=True)
-        login_tb.send_keys(login)
-        psw_tb.send_keys(password)
-        psw_tb.send_keys(Keys.RETURN)
-        self.wait(0.5)
-        self.wait_for_request(n=2)
-
-        # reset password if needed
-        newpw_tb = self.find("//input[@type='password'][@name='new_password']", 'xpath', auth)
-        verify_tb = self.find("//input[@type='password'][@name='verify_password']", 'xpath', auth)
-        if newpw_tb and newpw_tb.is_displayed():
-            newpw_tb.send_keys(new_password)
-            verify_tb.send_keys(new_password)
-            verify_tb.send_keys(Keys.RETURN)
+            auth = self.get_login_screen()
+            login_tb = self.find("//input[@type='text'][@name='username']", 'xpath', auth, strict=True)
+            psw_tb = self.find("//input[@type='password'][@name='password']", 'xpath', auth, strict=True)
+            login_tb.send_keys(login)
+            psw_tb.send_keys(password)
+            psw_tb.send_keys(Keys.RETURN)
             self.wait(0.5)
             self.wait_for_request(n=2)
+
+            # reset password if needed
+            newpw_tb = self.find("//input[@type='password'][@name='new_password']", 'xpath', auth)
+            verify_tb = self.find("//input[@type='password'][@name='verify_password']", 'xpath', auth)
+            if newpw_tb and newpw_tb.is_displayed():
+                newpw_tb.send_keys(new_password)
+                verify_tb.send_keys(new_password)
+                verify_tb.send_keys(Keys.RETURN)
+                self.wait(0.5)
+                self.wait_for_request(n=2)
 
     def logged_in(self):
         """
@@ -407,7 +411,7 @@ class UI_driver(object):
         """
         Get reference of login screen
         """
-        return self.find('rcue-login-screen', 'id')
+        return self.find('login-pf', 'class name')
 
     def login_screen_visible(self):
         """
