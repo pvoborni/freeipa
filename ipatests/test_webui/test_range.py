@@ -45,14 +45,15 @@ class test_range(range_tasks):
     @screenshot
     def test_mod(self):
         """
-        Test mod operating in a new range
+        Test mod operation on a new range. Ranges are immutable so it
+        should fail.
         """
 
         self.init_app()
         self.navigate_to_entity(ENTITY)
         self.get_shifts()
 
-        # creating record
+        # Create record
         add = self.get_add_data(PKEY)
         data = self.get_data(PKEY, add_data=add)
 
@@ -61,7 +62,7 @@ class test_range(range_tasks):
                         dialog_btn='add')
         self.navigate_to_record(PKEY)
 
-        # changing idrange and trying to save it
+        # Change idrange and try to save it, expect failure
         self.fill_fields(data['mod'], undo=True)
         self.assert_facet_button_enabled('save')
         self.facet_button_click('save')
@@ -70,6 +71,8 @@ class test_range(range_tasks):
         dialog = self.get_last_error_dialog()
         assert ("can not be used to change ID allocation for local IPA domain"
                 in dialog.text)
+
+        # Cleanup
         self.dialog_button_click('cancel')
         self.navigate_to_entity(ENTITY)
         self.wait_for_request()
@@ -101,6 +104,7 @@ class test_range(range_tasks):
 
         if self.has_trusts():
 
+            # Add trust
             trust_tasks = trust_mod.trust_tasks()
             trust_data = trust_tasks.get_data()
 
@@ -108,13 +112,14 @@ class test_range(range_tasks):
 
             domain = self.get_domain()
 
+            # Navigate to range and add range
             self.navigate_to_entity(ENTITY)
-
             add = self.get_add_data(pkey_ad, range_type='ipa-ad-trust', domain=domain)
             data = self.get_data(pkey_ad, add_data=add)
             self.add_record(ENTITY, data, navigate=False)
             self.assert_record_value('Active Directory domain range', pkey_ad, column)
 
+            # Cleanup
             self.delete(trust_mod.ENTITY, [trust_data])
             self.navigate_to_entity(ENTITY)
             self.delete_record(pkey_ad)
