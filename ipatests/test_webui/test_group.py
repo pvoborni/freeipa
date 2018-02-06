@@ -52,6 +52,8 @@ class test_group(UI_driver):
         self.init_app()
 
         pkey = 'itest-group'
+        # Specify posix type more then once to test if gitnumber
+        # field is properly enable and disabled as we click through.
         data = {
             'pkey': pkey,
             'add': [
@@ -60,6 +62,8 @@ class test_group(UI_driver):
                 ('textarea', 'description', 'test-group desc'),
                 ('radio', 'type', 'nonposix'),
                 ('callback', self.check_posix_enabled, False),
+                ('radio', 'type', 'posix'),
+                ('callback', self.check_posix_enabled, True),
                 ('radio', 'type', 'external'),
                 ('callback', self.check_posix_enabled, False),
                 ('radio', 'type', 'posix'),
