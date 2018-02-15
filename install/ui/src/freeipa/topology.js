@@ -261,22 +261,7 @@ return {
                     ]
                 }
             ],
-            actions: [
-                {
-                    $factory: IPA.delete_action,
-                    name: 'server_del',
-                    method: 'del',
-                    label: '@i18n:objects.servers.remove_server',
-                    needs_confirm: true,
-                    confirm_msg: '@i18n:objects.servers.remove_server_msg',
-                    confirm_dialog: {
-                        $factory: IPA.confirm_dialog,
-                        title: '@i18n:objects.servers.remove_server',
-                        ok_label: '@i18n:buttons.remove',
-                        ok_button_class: 'btn btn-danger'
-                    }
-                }
-            ],
+            actions: ['server_del'],
             control_buttons_right: [
                 {
                     name: 'server_del',
@@ -614,6 +599,110 @@ topology.servers_facet = function(spec, no_init) {
     };
 
     if (!no_init) that.init_servers_facet();
+
+    return that;
+};
+
+/**
+ * Server deleter dialog
+ *
+ * server_del can have 3 additional options: `ignore_topology_disconnect`,
+ * `ignore_last_of_role` and `force`. This dialog is able to display them.
+ *
+ * @class
+ */
+topology.server_deleter_dialog = function(spec) {
+
+    spec = spec || {};
+    spec.title = '@i18n:objects.servers.remove_server';
+    spec.ok_label = '@i18n:buttons.remove';
+    spec.ok_button_class = 'btn btn-danger';
+
+    var that = IPA.deleter_dialog(spec);
+
+    that.del_options = ['ignore_topology_disconnect', 'ignore_last_of_role',
+                        'force'];
+
+    /**
+     * Array of {
+     *    els: [checkbox_el, label_el, container_el]
+     *    metadata: option_metadata
+     * }
+     * containing references to all created checkbox elements and related
+     * metadata
+     */
+    that.checkboxes = [];
+
+    that.add_option_checkbox = function(option_metadata, container) {
+        // opt_els is a triplet: [checkbox_el, label_el, container_el]
+        var opt_els = IPA.standalone_option({
+            type: 'checkbox',
+            name: 'updatedns',
+            title: option_metadata.doc
+        }, container, option_metadata.label);
+        that.checkboxes.push({
+            els: opt_els,
+            metadata: option_metadata
+        });
+    };
+
+    that.create_content = function() {
+
+        that.deleter_dialog_create_content();
+
+        for (var i=0,j=that.del_options.length; i<j; i++) {
+            var name = that.del_options[i];
+            var metadata = IPA.get_command_option('server_del', name);
+            var checkbox_cont = $('<div/>');
+            that.add_option_checkbox(metadata, checkbox_cont);
+            that.container.append(checkbox_cont);
+        }
+    };
+
+    /**
+     * Get command option names of checked checkboxes
+     */
+    that.get_checked = function() {
+
+        var checked = [];
+
+        for (var i=0,j=that.checkboxes.length; i<j; i++) {
+            var cb_info = that.checkboxes[i];
+            if (cb_info.els[0].is(':checked')) {
+                checked.push(cb_info.metadata.name);
+            }
+        }
+
+        return checked;
+    };
+
+    return that;
+};
+
+topology.delete_server_action = function(spec) {
+    spec = spec || {};
+    spec.name = spec.name || 'server_del';
+    spec.label = '@i18n:objects.servers.remove_server';
+    spec.needs_confirm = true;
+    spec.confirm_msg = '@i18n:objects.servers.remove_server_msg';
+    spec.confirm_dialog = topology.server_deleter_dialog;
+
+    var that = IPA.delete_action(spec);
+
+    that.execute_action = function(facet, on_success, on_error) {
+
+        if (facet.is_dirty()) facet.reset();
+
+        var checked = that.dialog.get_checked();
+        var options = {};
+
+        for (var i=0,j=checked.length; i<j; i++) {
+            options[checked[i]] = true;
+        }
+
+        that.options = options;
+        that.object_execute_action(facet, on_success, on_error);
+    };
 
     return that;
 };
@@ -1549,6 +1638,7 @@ topology.register = function() {
     a.register('domainlevel_set', topology.domainlevel_set_action);
     a.register('segment_add', topology.add_segment_action);
     a.register('segment_del', topology.del_segment_action);
+    a.register('server_del', topology.delete_server_action);
 
     w.register('topology-graph', topology.TopologyGraphWidget);
     w.register('location_association_table', topology.location_association_table_widget);
