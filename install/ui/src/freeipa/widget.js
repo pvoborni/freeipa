@@ -2713,10 +2713,13 @@ IPA.standalone_option = function(spec, container, label) {
     }
 
     var label_el = $('<label/>', {
-        type: 'checkbox',
         'for': id,
         html: label
     });
+
+    if (spec.title) {
+        label_el.attr('title', spec.title);
+    }
 
     if (container) {
         input.appendTo(opt_cont);
