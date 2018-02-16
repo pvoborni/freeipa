@@ -641,6 +641,13 @@ class UserLocked(SessionError):
     """
     errno = 1204
 
+
+class MissingFactor(SessionError):
+    """
+    **1205** Raised when we cannot obtain TGT because 2FA is required
+    """
+    errno = 1205
+
 ##############################################################################
 # 2000 - 2999: Authorization errors
 class AuthorizationError(PublicError):

@@ -475,7 +475,7 @@ IPA.logout = function() {
  * @param {string} password
  * @return {string} Logout status - {password-expired, denied, invalid, success}
  */
-IPA.login_password = function(username, password) {
+IPA.login_password = function(username, password, otp) {
 
     var result = 'invalid';
     var d = new Deferred();
@@ -501,7 +501,8 @@ IPA.login_password = function(username, password) {
                 reason === 'denied' ||
                 reason === 'krbprincipal-expired' ||
                 reason === 'invalid-password' ||
-                reason === 'user-locked') {
+                reason === 'user-locked' ||
+                reason === 'missing-factor') {
                 result = reason;
             }
         }
@@ -510,7 +511,8 @@ IPA.login_password = function(username, password) {
 
     var data = {
         user: username,
-        password: password
+        password: password,
+        otp: otp
     };
 
     var request = {

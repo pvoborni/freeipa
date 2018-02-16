@@ -87,6 +87,8 @@ define(['dojo/_base/declare',
 
         user_locked: "The user account you entered is locked",
 
+        missing_factor: "Authentication requires both factors, please enter OTP",
+
         //nodes:
         login_btn_node: null,
         reset_btn_node: null,
@@ -187,19 +189,31 @@ define(['dojo/_base/declare',
 
         on_form_change: function(event) {
 
+            // set password and username as required if any field is filled
+            // otp is usually optional. In pure 2FA, otp+password it is not
+            // optional but Web UI doesn't have this info.
+
             var u_f = this.get_field('username');
             var p_f = this.get_field('password');
+            var otp_f = this.get_field('otp');
             var required = !util.is_empty(u_f.get_value()) ||
-                    !util.is_empty(p_f.get_value()) || !this.kerberos_enabled();
+                    !util.is_empty(p_f.get_value()) || !util.is_empty(otp_f.get_value()) ||
+                    !this.kerberos_enabled();
             u_f.set_required(required);
             p_f.set_required(required);
         },
 
         on_otp_change: function(event) {
-            if (this.view === 'login' || this.view === 'reset') return;
+            if (this.view === 'login') {
+                this.on_form_change(event);
+                return;
+            }
+
+            // on reset password view
             if (!event.value[0]) {
                 this.set_visible_buttons(['cancel', 'reset_and_login']);
             } else {
+                // otp cannot be reused -> no automatic login after reset
                 this.set_visible_buttons(['cancel', 'reset']);
             }
         },
@@ -259,9 +273,13 @@ define(['dojo/_base/declare',
             var login = this.get_field('username').get_value()[0];
             var password_f = this.get_field('password');
             var password = password_f.get_value()[0];
+            var otp_f = this.get_field('otp');
+            var otp = otp_f.get_value()[0];
 
-            IPA.login_password(login, password).then(
+            IPA.login_password(login, password, otp).then(
                 function(result) {
+
+                otp_f.set_value('');
 
                 if (result === 'success') {
                     this.emit('logged_in');
@@ -278,6 +296,9 @@ define(['dojo/_base/declare',
                 } else if (result === 'user-locked') {
                     password_f.set_value('');
                     val_summary.add_error('login', this.user_locked);
+                } else if (result === 'missing-factor') {
+                    password_f.set_value('');
+                    val_summary.add_error('login', this.missing_factor);
                 } else {
                     password_f.set_value('');
                     val_summary.add_error('login', this.form_auth_failed);
@@ -488,7 +509,7 @@ define(['dojo/_base/declare',
             }
             this.set_visible_buttons(['cert_auth', 'sync', 'login']);
             if (this.password_enabled()) {
-                this.use_fields(['username', 'password']);
+                this.use_fields(['username', 'password', 'otp']);
                 var username_f = this.get_field('username');
                 if (username_f.get_value()[0]) {
                     this.get_widget('password').focus_input();

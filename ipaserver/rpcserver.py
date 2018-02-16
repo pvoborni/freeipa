@@ -46,9 +46,11 @@ from ipalib.capabilities import VERSION_WITHOUT_CAPABILITIES
 from ipalib.frontend import Local
 from ipalib.install.kinit import kinit_armor, kinit_password
 from ipalib.backend import Executioner
-from ipalib.errors import (PublicError, InternalError, JSONError,
+from ipalib.errors import (
+    PublicError, InternalError, JSONError,
     CCacheError, RefererError, InvalidSessionPassword, NotFound, ACIError,
-    ExecutionError, PasswordExpired, KrbPrincipalExpired, UserLocked)
+    ExecutionError, PasswordExpired, KrbPrincipalExpired, UserLocked,
+    MissingFactor)
 from ipalib.request import context, destroy_context
 from ipalib.rpc import (xml_dumps, xml_loads,
     json_encode_binary, json_decode_binary)
@@ -967,6 +969,14 @@ class login_password(Backend, KerberosSession):
         else:
             return self.bad_request(environ, start_response, "no password specified")
 
+        otp = query_dict.get('otp', None)
+        if otp is not None:
+            if len(otp) == 1:
+                otp = otp[0]
+            else:
+                return self.bad_request(
+                    environ, start_response, "more than one otp parameter")
+
         # Get the ccache we'll use and attempt to get credentials in it with user,password
         ipa_ccache_name = os.path.join(paths.IPA_CCACHES,
                                        'kinit_{}'.format(os.getpid()))
@@ -976,7 +986,7 @@ class login_password(Backend, KerberosSession):
         except OSError:
             pass
         try:
-            self.kinit(user_principal, password, ipa_ccache_name)
+            self.kinit(user_principal, password, ipa_ccache_name, otp=otp)
         except PasswordExpired as e:
             return self.unauthorized(environ, start_response, str(e), 'password-expired')
         except InvalidSessionPassword as e:
@@ -991,6 +1001,11 @@ class login_password(Backend, KerberosSession):
                                      start_response,
                                      str(e),
                                      'user-locked')
+        except MissingFactor as e:
+            return self.unauthorized(environ,
+                                     start_response,
+                                     str(e),
+                                     'missing-factor')
 
         result = self.finalize_kerberos_acquisition('login_password',
                                                     ipa_ccache_name, environ,
@@ -1002,21 +1017,30 @@ class login_password(Backend, KerberosSession):
             pass
         return result
 
-    def kinit(self, principal, password, ccache_name):
-        # get anonymous ccache as an armor for FAST to enable OTP auth
-        armor_path = os.path.join(paths.IPA_CCACHES,
-                                  "armor_{}".format(os.getpid()))
+    def kinit(self, principal, password, ccache_name, otp=None):
 
-        logger.debug('Obtaining armor in ccache %s', armor_path)
+        if otp is not None:
+            # get anonymous ccache as an armor for FAST to enable OTP auth
+            armor_path = os.path.join(paths.IPA_CCACHES,
+                                      "armor_{}".format(os.getpid()))
 
-        try:
-            kinit_armor(
-                armor_path,
-                pkinit_anchors=[paths.KDC_CERT, paths.KDC_CA_BUNDLE_PEM],
-            )
-        except RuntimeError as e:
-            logger.error("Failed to obtain armor cache")
-            # We try to continue w/o armor, 2FA will be impacted
+            logger.debug('Obtaining armor in ccache %s', armor_path)
+
+            try:
+                kinit_armor(
+                    armor_path,
+                    pkinit_anchors=[paths.KDC_CERT, paths.KDC_CA_BUNDLE_PEM],
+                )
+            except RuntimeError as e:
+                logger.error("Failed to obtain armor cache")
+                # We try to continue w/o armor, 2FA will be impacted
+                armor_path = None
+
+            password = password + otp
+        else:
+            # Do not use armor ccache if otp is not present otherwise kinit
+            # will fail. This makes possible to use auth type 'password' (1FA)
+            # together with 'otp' (2FA)
             armor_path = None
 
         try:
@@ -1044,6 +1068,10 @@ class login_password(Backend, KerberosSession):
                   'while getting initial credentials') in str(e):
                 raise UserLocked(principal=principal,
                                  message=unicode(e))
+            elif ('kinit: Pre-authentication failed: Invalid argument '
+                  'while getting initial credentials') in str(e):
+                raise MissingFactor(principal=principal,
+                                    message=unicode(e))
             raise InvalidSessionPassword(principal=principal,
                                          message=unicode(e))
 
