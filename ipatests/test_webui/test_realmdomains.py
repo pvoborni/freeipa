@@ -81,6 +81,7 @@ class test_realmdomains(UI_driver):
         self.navigate_to_entity(ENTITY)
         self.del_realm_domain(realmdomain, 'ok')
         self.close_notifications()
+        self.take_screenshot("realm-domains-01-after-removal")
 
         # re-add _TXT kerberos.$domain "$REALM"
         self.navigate_to_entity(ZONE_ENTITY)
