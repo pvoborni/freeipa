@@ -3,14 +3,10 @@ topologies:
     name: build
     cpu: 2
     memory: 3800
-  master_1repl: &master_1repl
-    name: master_1repl
-    cpu: 4
-    memory: 5750
-  master_1repl_1client: &master_1repl_1client
-    name: master_1repl_1client
-    cpu: 4
-    memory: 6700
+  ipaserver: &ipaserver
+    name: ipaserver
+    cpu: 1
+    memory: 2400
 
 jobs:
   fedora-27/build:
@@ -23,42 +19,32 @@ jobs:
         git_refspec: '{git_refspec}'
         template: &ci-master-f27
           name: freeipa/ci-master-f27
-          version: 1.0.2
+          version: 1.0.3
         timeout: 1800
         topology: *build
 
-  fedora-27/simple_replication:
+  fedora-27/xmlrpc_tests_py2:
     requires: [fedora-27/build]
     priority: 50
     job:
-      class: RunPytest
+      class: RunPytest2
       args:
         build_url: '{fedora-27/build_url}'
-        test_suite: test_integration/test_simple_replication.py
+        test_suite: test_xmlrpc/
         template: *ci-master-f27
         timeout: 3600
-        topology: *master_1repl
+        topology: *ipaserver
+        xmlrpc: True
 
-  fedora-27/caless:
+  fedora-27/xmlrpc_tests_py3:
     requires: [fedora-27/build]
     priority: 50
     job:
-      class: RunPytest
+      class: RunPytest3
       args:
         build_url: '{fedora-27/build_url}'
-        test_suite: test_integration/test_caless.py::TestServerReplicaCALessToCAFull
+        test_suite: test_xmlrpc/
         template: *ci-master-f27
         timeout: 3600
-        topology: *master_1repl
-
-  fedora-27/external_ca:
-    requires: [fedora-27/build]
-    priority: 50
-    job:
-      class: RunPytest
-      args:
-        build_url: '{fedora-27/build_url}'
-        test_suite: test_integration/test_external_ca.py
-        template: *ci-master-f27
-        timeout: 3600
-        topology: *master_1repl
+        topology: *ipaserver
+        xmlrpc: True
