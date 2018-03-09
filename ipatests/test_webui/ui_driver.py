@@ -632,7 +632,7 @@ class UI_driver(object):
         """
         Click on link with given text and parent.
         """
-        if not parent:
+        if parent is None:
             parent = self.get_form()
 
         link = self.find(text, By.LINK_TEXT, parent, strict=True)
@@ -662,7 +662,7 @@ class UI_driver(object):
         """
         Click on .action-button
         """
-        if not parent:
+        if parent is None:
             parent = self.get_form()
 
         s = "a[name='%s'].action-button" % name
@@ -673,7 +673,7 @@ class UI_driver(object):
         """
         Click on .ui-button
         """
-        if not parent:
+        if parent is None:
             if parents_css_sel:
                 parent = self.find(parents_css_sel, By.CSS_SELECTOR,
                                    strict=True)
@@ -739,7 +739,7 @@ class UI_driver(object):
         """
         Select option with given value in select element
         """
-        if not parent:
+        if parent is None:
             parent = self.get_form()
         el = self.find(selector, By.CSS_SELECTOR, parent, strict=True)
         Select(el).select_by_value(value)
@@ -749,7 +749,7 @@ class UI_driver(object):
         Clear and enter text into input defined by selector.
         Use for non-standard fields.
         """
-        if not parent:
+        if parent is None:
             parent = self.get_form()
         tb = self.find(selector, By.CSS_SELECTOR, parent, strict=True)
         try:
@@ -789,7 +789,7 @@ class UI_driver(object):
         """
         Add new value to multivalued textbox
         """
-        if not parent:
+        if parent is None:
             parent = self.get_form()
         s = "div[name='%s'].multivalued-widget" % name
         w = self.find(s, By.CSS_SELECTOR, parent, strict=True)
@@ -804,7 +804,7 @@ class UI_driver(object):
         """
         Mark value in multivalued textbox as deleted.
         """
-        if not parent:
+        if parent is None:
             parent = self.get_form()
         s = "div[name='%s'].multivalued-widget" % name
         w = self.find(s, By.CSS_SELECTOR, parent, strict=True)
@@ -876,7 +876,7 @@ class UI_driver(object):
         Find checkbox or radio with name which matches ^NAME\d$ and
         check it by clicking on a label.
         """
-        if not parent:
+        if parent is None:
             parent = self.get_form()
         s = "//input[@type='checkbox' or 'radio'][contains(@name, '%s')]" % name
         if value is not None:
@@ -897,7 +897,7 @@ class UI_driver(object):
         """
         Select value in a combobox. Search if not found.
         """
-        if not parent:
+        if parent is None:
             parent = self.get_form()
         s = "[name='%s'].combobox-widget" % name
         cb = self.find(s, By.CSS_SELECTOR, parent, strict=True)
@@ -933,14 +933,14 @@ class UI_driver(object):
         self.wait()
 
     def get_text(self, selector, parent=None):
-        if not parent:
+        if parent is None:
             parent = self.get_form()
 
         el = self.find(selector, By.CSS_SELECTOR, parent, strict=True)
         return el.text
 
     def get_value(self, selector, parent=None):
-        if not parent:
+        if parent is None:
             parent = self.get_form()
         el = self.find(selector, By.CSS_SELECTOR, parent, strict=True)
         value = el.get_attribute('value')
@@ -965,7 +965,7 @@ class UI_driver(object):
         return values
 
     def get_field_checked(self, name, parent=None):
-        if not parent:
+        if parent is None:
             parent = self.get_form()
         s = "div[name='%s'] input[name^='%s']" % (name, name)
         els = self.find(s, By.CSS_SELECTOR, parent, strict=True, many=True)
@@ -976,7 +976,7 @@ class UI_driver(object):
         return values
 
     def get_field_selected(self, name, parent=None):
-        if not parent:
+        if parent is None:
             parent = self.get_form()
         s = "div[name='%s'] select[name='%s']" % (name, name)
         el = self.find(s, By.CSS_SELECTOR, parent, strict=True)
@@ -991,7 +991,7 @@ class UI_driver(object):
         """
         Get field undo button
         """
-        if not parent:
+        if parent is None:
             parent = self.get_form()
         s = ".controls div[name='%s'] .btn.undo" % (field)
         undos = self.find(s, By.CSS_SELECTOR, parent, strict=True, many=True)
@@ -1001,7 +1001,7 @@ class UI_driver(object):
         """
         Return all rows of search table.
         """
-        if not parent:
+        if parent is None:
             parent = self.get_form()
 
         # select table rows
@@ -1048,7 +1048,7 @@ class UI_driver(object):
         """
         Select record with given pkey in search table.
         """
-        if not parent:
+        if parent is None:
             parent = self.get_form()
 
         s = self.get_table_selector(table_name)
@@ -1079,7 +1079,7 @@ class UI_driver(object):
         """
         Check if table contains specific record.
         """
-        if not parent:
+        if parent is None:
             parent = self.get_form()
 
         s = self.get_table_selector(table_name)
@@ -1095,7 +1095,7 @@ class UI_driver(object):
         if entity:
             self.navigate_to_entity(entity, facet)
 
-        if not parent:
+        if parent is None:
             parent = self.get_facet()
 
         s = self.get_table_selector(table_name)
@@ -1159,7 +1159,7 @@ class UI_driver(object):
         ]
         """
 
-        if not parent:
+        if parent is None:
             parent = self.get_form()
 
         for field in fields:
@@ -1208,7 +1208,7 @@ class UI_driver(object):
         """
         if not fields:
             return
-        if not parent:
+        if parent is None:
             parent = self.get_form()
 
         for field in fields:
@@ -1437,7 +1437,7 @@ class UI_driver(object):
         """
         Add record to dnsrecord table, association table and similar
         """
-        if not parent:
+        if parent is None:
             parent = self.get_form()
         s = self.get_table_selector(name)
         table = self.find(s, By.CSS_SELECTOR, parent, strict=True)
@@ -1505,7 +1505,7 @@ class UI_driver(object):
         """
         Add value to table (association|rule|...)
         """
-        if not parent:
+        if parent is None:
             parent = self.get_form()
 
         s = self.get_table_selector(table_name)
@@ -1776,7 +1776,7 @@ class UI_driver(object):
         """
         Assert that element defined by selector is visible
         """
-        if not parent:
+        if parent is None:
             parent = self.get_form()
         el = self.find(selector, By.CSS_SELECTOR, parent, strict=True)
         visible = el.is_displayed()
@@ -1789,7 +1789,7 @@ class UI_driver(object):
         """
         Assert that element defined by selector is disabled
         """
-        if not parent:
+        if parent is None:
             parent = self.get_form()
         self.find(selector, By.CSS_SELECTOR, parent, strict=True)
         dis = self.find(selector+"[disabled]", By.CSS_SELECTOR, parent)
@@ -1890,7 +1890,7 @@ class UI_driver(object):
 
         li_s = " li[data-name='%s']" % action
 
-        if not parent:
+        if parent is None:
             parent = self.get_form()
 
         if facet_actions:
