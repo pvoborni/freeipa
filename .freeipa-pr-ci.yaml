@@ -23,6 +23,7 @@ jobs:
         timeout: 1800
         topology: *build
 
+
   fedora-27/test_topology:
     requires: [fedora-27/build]
     priority: 50
