@@ -690,7 +690,7 @@ class UI_driver(object):
         assert btn.is_displayed(), 'Button is not displayed: %s' % name
         assert not disabled, 'Invalid button state: disabled. Button: %s' % name
         btn.click()
-        self.wait_for_request()
+        self.wait_for_request(0.8)
 
     def move_to_element_in_page(self, element):
         # workaround to move the page until the element is visible
