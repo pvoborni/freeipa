@@ -1259,8 +1259,21 @@ class UI_driver(object):
             ],
         }
         """
-        pkey = data['pkey']
+        if type(data) is not list:
+            data = [data]
 
+        if type(dialog_btn) is not list:
+            dialog_btn = [dialog_btn]
+
+        set_add_another = True if 'add_and_add_another'\
+                                  in dialog_btn else False
+
+        last_element = data[len(data) - 1]
+
+        pkey = []
+
+        for each_data in data:
+            pkey.append(each_data['pkey'])
         if navigate:
             self.navigate_to_entity(entity, facet)
 
@@ -1268,8 +1281,9 @@ class UI_driver(object):
         self.assert_facet(entity, facet)
 
         # delete if exists, ie. from previous test fail
+
         if pre_delete:
-            self.delete_record(pkey, data.get('del'))
+            self.delete_record(pkey)
 
         # current row count
         self.wait_for_request(0.5)
@@ -1280,13 +1294,24 @@ class UI_driver(object):
         self.facet_button_click(facet_btn)
         self.assert_dialog(dialog_name)
 
-        # fill dialog
-        self.fill_fields(data['add'], combobox_input=combobox_input)
+        for each_data in data:
 
-        # confirm dialog
-        self.dialog_button_click(dialog_btn)
-        self.wait_for_request()
-        self.wait_for_request()
+            # fill dialog
+            self.fill_fields(each_data['add'], combobox_input=combobox_input)
+            if set_add_another is True:
+                    if each_data != last_element:
+                        # confirm dialog
+                        self.dialog_button_click(dialog_btn[1])
+                        self.wait_for_request()
+                        self.wait_for_request()
+                    else:
+                        self.dialog_button_click(dialog_btn[0])
+                        self.wait_for_request()
+                        self.wait_for_request()
+            else:
+                self.dialog_button_click(dialog_btn[0])
+                self.wait_for_request()
+                self.wait_for_request()
 
         # check expected error/warning/info
         expected = ['error_4304_info']
@@ -1303,7 +1328,7 @@ class UI_driver(object):
         # check if table has more rows
         new_count = len(self.get_rows())
         # adjust because of paging
-        expected = count + 1
+        expected = count + len(data)
         if count == 20:
             expected = 20
         self.assert_row_count(expected, new_count)
@@ -1429,7 +1454,7 @@ class UI_driver(object):
 
     def prepare_associations(
             self, pkeys, facet=None, facet_btn='add', member_pkeys=None,
-            confirm_btn='add'):
+            confirm_btn='add', search=False):
         """
         Helper function for add_associations and delete_associations
         """
@@ -1440,8 +1465,18 @@ class UI_driver(object):
         self.wait()
         self.wait_for_request()
 
-        for key in pkeys:
-            self.select_record(key, table_name='available')
+        if search is True:
+            for key in pkeys:
+                search_field_s = '.adder-dialog-top input[name="filter"]'
+                self.fill_text(search_field_s, key)
+                self._button_click(selector="button[name='find'].btn-default",
+                                   parent=None)
+                self.wait_for_request()
+                self.select_record(key, table_name='available')
+                self.button_click('add')
+        else:
+            for key in pkeys:
+                self.select_record(key, table_name='available')
             self.button_click('add')
 
         self.dialog_button_click(confirm_btn)
@@ -1456,18 +1491,19 @@ class UI_driver(object):
 
     def add_associations(
             self, pkeys, facet=None, delete=False, facet_btn='add',
-            member_pkeys=None, confirm_btn='add'):
+            member_pkeys=None, confirm_btn='add', search=False):
         """
         Add associations
         """
         check_pkeys = self.prepare_associations(
-            pkeys, facet, facet_btn, member_pkeys, confirm_btn=confirm_btn)
+            pkeys, facet, facet_btn, member_pkeys, confirm_btn, search)
 
         # we need to return if we want to "cancel" to avoid assert record fail
         if confirm_btn == 'cancel':
             return
 
         for key in check_pkeys:
+
             self.assert_record(key)
             if delete:
                 self.delete_record(key)
@@ -1484,7 +1520,8 @@ class UI_driver(object):
         for key in check_pkeys:
             self.assert_record(key, negative=True)
 
-    def add_table_associations(self, table_name, pkeys, parent=False, delete=False):
+    def add_table_associations(self, table_name, pkeys, parent=False,
+                               delete=False):
         """
         Add value to table (association|rule|...)
         """
@@ -1950,9 +1987,9 @@ class UI_driver(object):
             assert is_enabled == enabled, ('Invalid enabled state of action item %s. '
                                            'Expected: %s') % (action, str(visible))
 
-    def assert_field_validation_required(self, parent=None):
+    def assert_field_validation(self, expect_error, parent=None):
         """
-        Assert we got 'Required field' error message in field validation
+        Assert for error in field validation
         """
 
         if not parent:
@@ -1961,7 +1998,8 @@ class UI_driver(object):
         req_field_css = '.help-block[name="error_link"]'
 
         res = self.find(req_field_css, By.CSS_SELECTOR, context=parent)
-        assert 'Required field' in res.text, 'No "Required field" error found'
+        assert expect_error in res.text, \
+            'Expected error: {} not found'.format(expect_error)
 
     def assert_notification(self, type='success', assert_text=None):
         """
@@ -1980,3 +2018,12 @@ class UI_driver(object):
         assert is_present, "Notification not present"
         if assert_text:
             assert assert_text in is_present.text
+
+    def select_multiple_record(self, entity, data1):
+        """
+        Select multiple records
+        """
+        self.navigate_to_entity(entity)
+        for data in data1:
+            pkey = data['pkey']
+            self.select_record(pkey)
