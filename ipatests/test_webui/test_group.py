@@ -1,3 +1,4 @@
+#testing
 # Authors:
 #   Petr Vobornik <pvoborni@redhat.com>
 #
@@ -74,6 +75,114 @@ class test_group(UI_driver):
 
     def check_posix_enabled(self, enabled):
         self.assert_disabled("[name=gidnumber]", negative=enabled)
+
+    @screenshot
+    def test_add_group_negative(self):
+        """
+        Negative test for adding groups
+        """
+        self.init_app()
+
+        self.empty_group_name()
+        self.invalid_group_name()
+        self.duplicate_group_name()
+        self.tailing_spaces_in_group_description()
+        self.leading_spaces_in_group_description()
+
+    def empty_group_name(self):
+        expected_error = 'Required field'
+        self.navigate_to_entity(group.ENTITY)
+        self.facet_button_click('add')
+        self.dialog_button_click('add')
+        elem = self.find(".widget[name='cn']")
+        self.assert_field_validation(expected_error, parent=elem)
+        self.dialog_button_click('cancel')
+
+    def invalid_group_name(self):
+        expected_error = 'may only include letters, numbers, _, -, . and $'
+        pkey = ';test-gr@up'
+        self.navigate_to_entity(group.ENTITY)
+        self.facet_button_click('add')
+        self.fill_input('cn', pkey)
+        elem = self.find(".widget[name='cn']")
+        self.assert_field_validation(expected_error, parent=elem)
+        self.dialog_button_click('cancel')
+
+    def duplicate_group_name(self):
+        pkey = 'editors'
+        expected_error = 'group with name "editors" already exists'
+        self.navigate_to_entity(group.ENTITY)
+        self.facet_button_click('add')
+        self.fill_input('cn', pkey)
+        self.cancel_retry_dialog(expected_error)
+
+    def tailing_spaces_in_group_description(self):
+        pkey = 'itest_group0'
+        desc = 'with_trailing_space '
+        expected_error = 'invalid \'desc\': Leading and trailing spaces are not allowed'
+        self.navigate_to_entity(group.ENTITY)
+        self.facet_button_click('add')
+        self.fill_input('cn', pkey)
+        self.fill_textarea('description', desc)
+        self.cancel_retry_dialog(expected_error)
+
+    def leading_spaces_in_group_description(self):
+        pkey = 'itest_group0'
+        desc = ' with_leading_space'
+        expected_error = 'invalid \'desc\': Leading and trailing spaces are not allowed'
+        self.navigate_to_entity(group.ENTITY)
+        self.facet_button_click('add')
+        self.fill_input('cn', pkey)
+        self.fill_textarea('description', desc)
+        self.cancel_retry_dialog(expected_error)
+
+    def cancel_retry_dialog(self, expected_error):
+        self.dialog_button_click('add')
+        dialog = self.get_last_error_dialog()
+        assert (expected_error in dialog.text)
+        self.wait_for_request()
+        self.dialog_button_click('retry')
+        self.wait_for_request()
+        self.dialog_button_click('cancel')
+        self.dialog_button_click('cancel')
+
+    @screenshot
+    def test_add_multiple_group(self):
+        """
+        Use 'add and add another' button to create multiple groups at one shot
+        """
+        self.init_app()
+
+        self.add_posix_and_nonposix_group()
+        self.add_two_nonposix_group()
+        self.add_two_posix_group()
+
+    def add_posix_and_nonposix_group(self):
+        self.add_multiple_record(group.ENTITY, group.DATA, group.DATA2, dialog_btn='add_and_add_another')
+
+    def add_two_nonposix_group(self):
+        self.add_multiple_record(group.ENTITY, group.DATA9, group.DATA10, dialog_btn='add_and_add_another')
+
+    def add_two_posix_group(self):
+        self.add_multiple_record(group.ENTITY, group.DATA5, group.DATA6, dialog_btn='add_and_add_another')
+
+    @screenshot
+    def test_add_and_edit_group(self):
+        """
+        1. add and switch to edit mode
+        2. add and cancel
+        """
+        self.init_app()
+
+        self.add_and_edit()
+        self.add_and_cancel()
+
+    def add_and_edit(self):
+        self.add_and_edit_record(group.ENTITY, group.DATA, dialog_btn='add_and_edit')
+        self.delete_action()
+
+    def add_and_cancel(self):
+        self.add_and_edit_record(group.ENTITY, group.DATA, dialog_btn='cancel')
 
     @screenshot
     def test_actions(self):

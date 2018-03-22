@@ -1875,3 +1875,132 @@ class UI_driver(object):
             is_enabled = not self.has_class(li, 'disabled')
             assert is_enabled == enabled, ('Invalid enabled state of action item %s. '
                                            'Expected: %s') % (action, str(visible))
+
+    def assert_field_validation(self, expect_error, parent=None):
+        """
+        Assert for error in field validation
+        """
+
+        if not parent:
+            parent = self.get_form()
+
+        req_field_css = '.help-block[name="error_link"]'
+
+        res = self.find(req_field_css, By.CSS_SELECTOR, context=parent)
+        assert expect_error in res.text, 'No error found'
+
+    def add_multiple_record(self, entity, data1, data2, facet='search', facet_btn='add',
+                            dialog_btn='add', dialog_btn2='add', pre_delete=True, dialog_name='add', navigate=True,
+                            combobox_input=None):
+        """
+        Add records.
+
+        Expected data format:
+        {
+            'pkey': 'key',
+            add: [
+                ('widget_type', 'key', 'value'),
+                ('widget_type', 'key2', 'value2'),
+            ],
+        }
+        """
+        pkey1 = data1['pkey']
+        pkey2 = data2['pkey']
+        pkey = [pkey1, pkey2]
+
+        if navigate:
+            self.navigate_to_entity(entity, facet)
+
+        # check facet
+        self.assert_facet(entity, facet)
+
+        # delete if already exists
+        if pre_delete:
+            self.delete_record(pkey)
+
+        # open add dialog
+        self.assert_no_dialog()
+        self.facet_button_click(facet_btn)
+        self.assert_dialog(dialog_name)
+
+        # fill dialog
+        self.fill_fields(data1['add'], combobox_input=combobox_input)
+
+        # confirm dialog
+        self.dialog_button_click(dialog_btn)
+        self.wait_for_request()
+        self.wait_for_request()
+
+        # fill dialog-2
+        self.fill_fields(data2['add'], combobox_input=combobox_input)
+
+        # confirm dialog-2
+        self.dialog_button_click(dialog_btn2)
+        self.wait_for_request()
+        self.wait_for_request()
+
+        # check expected error/warning/info
+        expected = ['error_4304_info']
+        dialog_info = self.get_dialog_info()
+        if dialog_info and dialog_info['name'] in expected:
+            self.dialog_button_click('ok')
+            self.wait_for_request()
+
+        # check for error
+        self.assert_no_error_dialog()
+        self.wait_for_request()
+        self.wait_for_request(0.4)
+
+        # Select multiple records and delete
+        self.delete_record(pkey)
+
+    def add_and_edit_record(self, entity, data1, facet='search', facet_btn='add', dialog_btn=None, pre_delete=True,
+                            dialog_name='add', navigate=True, combobox_input=None):
+        """
+        Add and edit records.
+        """
+        pkey1 = data1['pkey']
+
+        if navigate:
+            self.navigate_to_entity(entity, facet)
+
+        # check facet
+        self.assert_facet(entity, facet)
+
+        # delete if already exists
+        if pre_delete:
+            self.delete_record(pkey1, data1.get('del'))
+
+        # open add dialog
+        self.assert_no_dialog()
+        self.facet_button_click(facet_btn)
+        self.assert_dialog(dialog_name)
+
+        # fill dialog
+        self.fill_fields(data1['add'], combobox_input=combobox_input)
+
+        if dialog_btn == 'add_and_edit':
+            # confirm dialog
+            self.dialog_button_click(dialog_btn)
+            self.wait_for_request(n=2)
+            self.switch_to_facet('details')
+            self.action_list_action('make_posix')
+            self.wait_for_request(n=2)
+            self.assert_no_error_dialog()
+            self.assert_text_field('external', 'POSIX', element='span')
+
+            # check expected error/warning/info
+            expected = ['error_4304_info']
+            dialog_info = self.get_dialog_info()
+            if dialog_info and dialog_info['name'] in expected:
+                self.dialog_button_click('ok')
+                self.wait_for_request()
+
+            # check for error
+            self.assert_no_error_dialog()
+            self.wait_for_request()
+            self.wait_for_request(0.4)
+
+        if dialog_btn == 'cancel':
+            self.dialog_button_click(dialog_btn)
+
