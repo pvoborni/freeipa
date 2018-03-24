@@ -1089,10 +1089,12 @@ class UI_driver(object):
         # exec and confirm
         if selected:
             if table_name and parent:
+                self.take_screenshot("pre-button-click")
                 s = self.get_table_selector(table_name)
                 table = self.find(s, By.CSS_SELECTOR, parent, strict=True)
                 self.button_click(facet_btn, table)
             else:
+                self.take_screenshot("pre-facet-button-click")
                 self.facet_button_click(facet_btn)
             if fields:
                 self.fill_fields(fields)
