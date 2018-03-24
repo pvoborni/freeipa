@@ -1370,6 +1370,8 @@ class UI_driver(object):
                         dialog_btn=add_dialog_btn
                         )
 
+        self.close_notifications()
+
         # Find
         self.find_record(parent_entity, data, search_facet)
 
@@ -1387,6 +1389,8 @@ class UI_driver(object):
         if mod and data.get('mod'):
             self.mod_record(entity, data, details_facet, update_btn)
             self.validate_fields(data.get('mod_v'))
+
+        self.close_notifications()
 
         if not breadcrumb:
             self.navigate_to_entity(entity, search_facet)
