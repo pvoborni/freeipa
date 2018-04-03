@@ -1034,6 +1034,16 @@ class UI_driver(object):
                    'Record was not checked: %s' % input_s
             self.wait()
 
+    def select_multiple_record(self, records):
+        """
+        Select multiple records
+
+        Expects a list of DATA structures.
+        """
+        for record in records:
+            pkey = data['pkey']
+            self.select_record(pkey)
+
     def get_record_value(self, pkey, column, parent=None, table_name=None):
         """
         Get table column's text value
@@ -1245,7 +1255,7 @@ class UI_driver(object):
         self.wait_for_request(n=2)
 
     def add_record(self, entity, data, facet='search', facet_btn='add',
-                   dialog_btn='add', delete=False, pre_delete=True,
+                   dialog_btn='add', add_another_btn="add_and_add_another", delete=False, pre_delete=True,
                    dialog_name='add', navigate=True, combobox_input=None):
         """
         Add records.
@@ -1258,22 +1268,21 @@ class UI_driver(object):
                 ('widget_type', 'key2', 'value2'),
             ],
         }
+
+In case of dialgo_btn == 'add_and_edit' then the method test for
+different page. <fix me> write better sentence.
+
         """
         if type(data) is not list:
             data = [data]
 
-        if type(dialog_btn) is not list:
-            dialog_btn = [dialog_btn]
-
-        set_add_another = True if 'add_and_add_another'\
-                                  in dialog_btn else False
 
         last_element = data[len(data) - 1]
 
-        pkey = []
+        pkeys = []
 
-        for each_data in data:
-            pkey.append(each_data['pkey'])
+        for record in data:
+            pkeys.append(record['pkey'])
         if navigate:
             self.navigate_to_entity(entity, facet)
 
@@ -1283,7 +1292,7 @@ class UI_driver(object):
         # delete if exists, ie. from previous test fail
 
         if pre_delete:
-            self.delete_record(pkey)
+            self.delete_record(pkeys)
 
         # current row count
         self.wait_for_request(0.5)
@@ -1294,48 +1303,45 @@ class UI_driver(object):
         self.facet_button_click(facet_btn)
         self.assert_dialog(dialog_name)
 
-        for each_data in data:
+        for record in data:
 
             # fill dialog
             self.fill_fields(each_data['add'], combobox_input=combobox_input)
-            if set_add_another is True:
-                    if each_data != last_element:
-                        # confirm dialog
-                        self.dialog_button_click(dialog_btn[1])
-                        self.wait_for_request()
-                        self.wait_for_request()
-                    else:
-                        self.dialog_button_click(dialog_btn[0])
-                        self.wait_for_request()
-                        self.wait_for_request()
-            else:
-                self.dialog_button_click(dialog_btn[0])
-                self.wait_for_request()
-                self.wait_for_request()
 
-        # check expected error/warning/info
-        expected = ['error_4304_info']
-        dialog_info = self.get_dialog_info()
-        if dialog_info and dialog_info['name'] in expected:
-            self.dialog_button_click('ok')
+            btn = dialog_btn
+            if record != last_element:
+                btn = add_another_btn
+
+            self.dialog_button_click(btn)
+            self.wait_for_request()
             self.wait_for_request()
 
-        # check for error
-        self.assert_no_error_dialog()
-        self.wait_for_request()
-        self.wait_for_request(0.4)
+            # check expected error/warning/info
+            expected = ['error_4304_info']
+            dialog_info = self.get_dialog_info()
+            if dialog_info and dialog_info['name'] in expected:
+                self.dialog_button_click('ok')
+                self.wait_for_request()
 
-        # check if table has more rows
-        new_count = len(self.get_rows())
-        # adjust because of paging
-        expected = count + len(data)
-        if count == 20:
-            expected = 20
-        self.assert_row_count(expected, new_count)
+            # check for error
+            self.assert_no_error_dialog()
+            self.wait_for_request()
+            self.wait_for_request(0.4)
+
+        if dialog_btn == 'add_and_edit':
+            # assert details facet
+        else:
+            # check if table has more rows
+            new_count = len(self.get_rows())
+            # adjust because of paging
+            expected = count + len(data)
+            if count == 20:
+                expected = 20
+            self.assert_row_count(expected, new_count)
 
         # delete record
         if delete:
-            self.delete_record(pkey)
+            self.delete_record(pkeys)
             new_count = len(self.get_rows())
             self.assert_row_count(count, new_count)
 
@@ -2019,11 +2025,4 @@ class UI_driver(object):
         if assert_text:
             assert assert_text in is_present.text
 
-    def select_multiple_record(self, entity, data1):
-        """
-        Select multiple records
-        """
-        self.navigate_to_entity(entity)
-        for data in data1:
-            pkey = data['pkey']
-            self.select_record(pkey)
+
