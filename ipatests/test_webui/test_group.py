@@ -170,12 +170,11 @@ class test_group(UI_driver):
         self.delete_multiple_records()
 
     def add_posix_and_nonposix_group(self):
-        self.add_record(group.ENTITY, [group.DATA, group.DATA2],
-                        dialog_btn=['add', 'add_and_add_another'])
+        self.add_record(group.ENTITY, [group.DATA, group.DATA2])                       )
 
     def add_two_nonposix_group(self):
         self.add_record(group.ENTITY, [group.DATA9, group.DATA10],
-                        dialog_btn=['add', 'add_and_add_another'])
+                        dialog_btn='add_and_edit')
 
     def add_two_posix_group(self):
         self.add_record(group.ENTITY, [group.DATA5, group.DATA6],
@@ -196,12 +195,17 @@ class test_group(UI_driver):
         """
         self.init_app()
 
-        self.add_and_edit()
+        self.add_record(group.ENTITY, group.DATA,
+                                 dialog_btn='add_and_edit')
+        self.make_posix()
         self.add_and_cancel()
 
-    def add_and_edit(self):
-        self.add_and_edit_record(group.ENTITY, group.DATA,
-                                 dialog_btn='add_and_edit')
+   def make_posix(self):
+        self.switch_to_facet('details')
+        self.action_list_action('make_posix')
+        self.wait_for_request(n=2)
+        self.assert_no_error_dialog()
+        self.assert_text_field('external', 'POSIX', element='span')
         self.delete_action()
 
     def add_and_cancel(self):
@@ -375,55 +379,3 @@ class test_group(UI_driver):
         self.delete(rbac.ROLE_ENTITY, [rbac.ROLE_DATA])
         self.delete(hbac.RULE_ENTITY, [hbac.RULE_DATA])
         self.delete(sudo.RULE_ENTITY, [sudo.RULE_DATA])
-
-    def add_and_edit_record(self, entity, data1, facet='search',
-                            facet_btn='add', dialog_btn=None, pre_delete=True,
-                            dialog_name='add', navigate=True,
-                            combobox_input=None):
-        """
-        Add and edit records.
-        """
-        pkey1 = data1['pkey']
-
-        if navigate:
-            self.navigate_to_entity(entity, facet)
-
-        # check facet
-        self.assert_facet(entity, facet)
-
-        # delete if already exists
-        if pre_delete:
-            self.delete_record(pkey1, data1.get('del'))
-
-        # open add dialog
-        self.assert_no_dialog()
-        self.facet_button_click(facet_btn)
-        self.assert_dialog(dialog_name)
-
-        # fill dialog
-        self.fill_fields(data1['add'], combobox_input=combobox_input)
-
-        if dialog_btn == 'add_and_edit':
-            # confirm dialog
-            self.dialog_button_click(dialog_btn)
-            self.wait_for_request(n=2)
-            self.switch_to_facet('details')
-            self.action_list_action('make_posix')
-            self.wait_for_request(n=2)
-            self.assert_no_error_dialog()
-            self.assert_text_field('external', 'POSIX', element='span')
-
-            # check expected error/warning/info
-            expected = ['error_4304_info']
-            dialog_info = self.get_dialog_info()
-            if dialog_info and dialog_info['name'] in expected:
-                self.dialog_button_click('ok')
-                self.wait_for_request()
-
-            # check for error
-            self.assert_no_error_dialog()
-            self.wait_for_request()
-            self.wait_for_request(0.4)
-
-        if dialog_btn == 'cancel':
-            self.dialog_button_click(dialog_btn)
