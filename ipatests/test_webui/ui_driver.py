@@ -745,6 +745,16 @@ class UI_driver(object):
         el = self.find(selector, By.CSS_SELECTOR, parent, strict=True)
         Select(el).select_by_value(value)
 
+    def select_multiple_records(self, entity, records, navigate=True):
+        """
+        Select multiple records
+        """
+        if navigate:
+            self.navigate_to_entity(entity)
+        for data in records:
+            pkey = data['pkey']
+            self.select_record(pkey)
+
     def fill_text(self, selector, value, parent=None):
         """
         Clear and enter text into input defined by selector.
@@ -1245,7 +1255,7 @@ class UI_driver(object):
         self.wait_for_request(n=2)
 
     def add_record(self, entity, data, facet='search', facet_btn='add',
-                   dialog_btn='add', delete=False, pre_delete=True,
+                   dialog_btn='add', add_another_btn='add_and_add_another', delete=False, pre_delete=True,
                    dialog_name='add', navigate=True, combobox_input=None):
         """
         Add records.
@@ -1259,8 +1269,15 @@ class UI_driver(object):
             ],
         }
         """
-        pkey = data['pkey']
+        if type(data) is not list:
+            data = [data]
 
+        last_element = data[len(data) - 1]
+
+        pkeys = []
+
+        for record in data:
+            pkeys.append(record['pkey'])
         if navigate:
             self.navigate_to_entity(entity, facet)
 
@@ -1268,8 +1285,9 @@ class UI_driver(object):
         self.assert_facet(entity, facet)
 
         # delete if exists, ie. from previous test fail
+
         if pre_delete:
-            self.delete_record(pkey, data.get('del'))
+            self.delete_record(pkeys)
 
         # current row count
         self.wait_for_request(0.5)
@@ -1280,37 +1298,56 @@ class UI_driver(object):
         self.facet_button_click(facet_btn)
         self.assert_dialog(dialog_name)
 
-        # fill dialog
-        self.fill_fields(data['add'], combobox_input=combobox_input)
+        for record in data:
 
-        # confirm dialog
-        self.dialog_button_click(dialog_btn)
-        self.wait_for_request()
-        self.wait_for_request()
+            # fill dialog
+            self.fill_fields(record['add'], combobox_input=combobox_input)
 
-        # check expected error/warning/info
-        expected = ['error_4304_info']
-        dialog_info = self.get_dialog_info()
-        if dialog_info and dialog_info['name'] in expected:
-            self.dialog_button_click('ok')
+            btn = dialog_btn
+
+            if record != last_element:
+                btn = add_another_btn
+
+            self.dialog_button_click(btn)
+            self.wait_for_request()
             self.wait_for_request()
 
-        # check for error
-        self.assert_no_error_dialog()
-        self.wait_for_request()
-        self.wait_for_request(0.4)
+            # check expected error/warning/info
+            expected = ['error_4304_info']
+            dialog_info = self.get_dialog_info()
+            if dialog_info and dialog_info['name'] in expected:
+                self.dialog_button_click('ok')
+                self.wait_for_request()
 
-        # check if table has more rows
-        new_count = len(self.get_rows())
-        # adjust because of paging
-        expected = count + 1
-        if count == 20:
-            expected = 20
-        self.assert_row_count(expected, new_count)
+            # check for error
+            self.assert_no_error_dialog()
+            self.wait_for_request()
+            self.wait_for_request(0.4)
+
+        if dialog_btn == 'add_and_edit':
+            # confirm dialog
+            self.wait_for_request(n=2)
+            self.switch_to_facet('details')
+            self.action_list_action('make_posix')
+            self.wait_for_request(n=2)
+            self.assert_no_error_dialog()
+            self.assert_text_field('external', 'POSIX', element='span')
+
+        elif dialog_btn != 'cancel':
+            # check if table has more rows
+            new_count = len(self.get_rows())
+            # adjust because of paging
+            expected = count + len(data)
+            if count == 20:
+                expected = 20
+            self.assert_row_count(expected, new_count)
+
+        if dialog_btn == 'cancel':
+            return
 
         # delete record
         if delete:
-            self.delete_record(pkey)
+            self.delete_record(pkeys)
             new_count = len(self.get_rows())
             self.assert_row_count(count, new_count)
 
@@ -1429,7 +1466,7 @@ class UI_driver(object):
 
     def prepare_associations(
             self, pkeys, facet=None, facet_btn='add', member_pkeys=None,
-            confirm_btn='add'):
+            confirm_btn='add', search=False):
         """
         Helper function for add_associations and delete_associations
         """
@@ -1440,8 +1477,18 @@ class UI_driver(object):
         self.wait()
         self.wait_for_request()
 
-        for key in pkeys:
-            self.select_record(key, table_name='available')
+        if search is True:
+            for key in pkeys:
+                search_field_s = '.adder-dialog-top input[name="filter"]'
+                self.fill_text(search_field_s, key)
+                self._button_click(selector="button[name='find'].btn-default",
+                                   parent=None)
+                self.wait_for_request()
+                self.select_record(key, table_name='available')
+                self.button_click('add')
+        else:
+            for key in pkeys:
+                self.select_record(key, table_name='available')
             self.button_click('add')
 
         self.dialog_button_click(confirm_btn)
@@ -1456,18 +1503,19 @@ class UI_driver(object):
 
     def add_associations(
             self, pkeys, facet=None, delete=False, facet_btn='add',
-            member_pkeys=None, confirm_btn='add'):
+            member_pkeys=None, confirm_btn='add', search=False):
         """
         Add associations
         """
         check_pkeys = self.prepare_associations(
-            pkeys, facet, facet_btn, member_pkeys, confirm_btn=confirm_btn)
+            pkeys, facet, facet_btn, member_pkeys, confirm_btn, search)
 
         # we need to return if we want to "cancel" to avoid assert record fail
         if confirm_btn == 'cancel':
             return
 
         for key in check_pkeys:
+
             self.assert_record(key)
             if delete:
                 self.delete_record(key)
@@ -1484,7 +1532,8 @@ class UI_driver(object):
         for key in check_pkeys:
             self.assert_record(key, negative=True)
 
-    def add_table_associations(self, table_name, pkeys, parent=False, delete=False):
+    def add_table_associations(self, table_name, pkeys, parent=False,
+                               delete=False):
         """
         Add value to table (association|rule|...)
         """
@@ -1950,9 +1999,9 @@ class UI_driver(object):
             assert is_enabled == enabled, ('Invalid enabled state of action item %s. '
                                            'Expected: %s') % (action, str(visible))
 
-    def assert_field_validation_required(self, parent=None):
+    def assert_field_validation(self, expect_error, parent=None):
         """
-        Assert we got 'Required field' error message in field validation
+        Assert for error in field validation
         """
 
         if not parent:
@@ -1961,7 +2010,8 @@ class UI_driver(object):
         req_field_css = '.help-block[name="error_link"]'
 
         res = self.find(req_field_css, By.CSS_SELECTOR, context=parent)
-        assert 'Required field' in res.text, 'No "Required field" error found'
+        assert expect_error in res.text, \
+            'Expected error: {} not found'.format(expect_error)
 
     def assert_notification(self, type='success', assert_text=None):
         """
