@@ -1255,8 +1255,9 @@ class UI_driver(object):
         self.wait_for_request(n=2)
 
     def add_record(self, entity, data, facet='search', facet_btn='add',
-                   dialog_btn='add', add_another_btn='add_and_add_another', delete=False, pre_delete=True,
-                   dialog_name='add', navigate=True, combobox_input=None):
+                   dialog_btn='add', add_another_btn='add_and_add_another',
+                   delete=False, pre_delete=True, dialog_name='add',
+                   navigate=True, combobox_input=None):
         """
         Add records.
 
@@ -1299,7 +1300,6 @@ class UI_driver(object):
         self.assert_dialog(dialog_name)
 
         for record in data:
-
             # fill dialog
             self.fill_fields(record['add'], combobox_input=combobox_input)
 
@@ -1319,31 +1319,35 @@ class UI_driver(object):
                 self.dialog_button_click('ok')
                 self.wait_for_request()
 
+            if btn == add_another_btn:
+                dia_alert = self.get_text('.dialog-message',
+                                          parent=self.get_dialog())
+                assert 'successfully added' in dia_alert
+
             # check for error
             self.assert_no_error_dialog()
             self.wait_for_request()
             self.wait_for_request(0.4)
 
         if dialog_btn == 'add_and_edit':
-            # confirm dialog
-            self.wait_for_request(n=2)
-            self.switch_to_facet('details')
-            self.action_list_action('make_posix')
-            self.wait_for_request(n=2)
-            self.assert_no_error_dialog()
-            self.assert_text_field('external', 'POSIX', element='span')
-
-        elif dialog_btn != 'cancel':
-            # check if table has more rows
-            new_count = len(self.get_rows())
-            # adjust because of paging
-            expected = count + len(data)
-            if count == 20:
-                expected = 20
-            self.assert_row_count(expected, new_count)
-
-        if dialog_btn == 'cancel':
+            page_pkey = self.get_text('.facet-pkey')
+            assert data['pkey'] in page_pkey
+            return  # we cannot delete because we are on different page
+        elif dialog_btn == add_another_btn:
+            # dialog is still open, we cannot check for records on search page
+            # or delete the records
             return
+        elif dialog_btn == 'cancel':
+            return
+
+        # when standard 'add' was used then it will land on search page
+        # and we can check if new item was added - table has more rows
+        new_count = len(self.get_rows())
+        # adjust because of paging
+        expected = count + len(data)
+        if count == 20:
+            expected = 20
+        self.assert_row_count(expected, new_count)
 
         # delete record
         if delete:
