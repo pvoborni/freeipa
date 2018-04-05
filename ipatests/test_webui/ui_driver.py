@@ -2017,6 +2017,9 @@ class UI_driver(object):
         assert expect_error in res.text, \
             'Expected error: {} not found'.format(expect_error)
 
+    def assert_field_validation_required(self, parent=None):
+        self.assert_field_validation('Required field', parent)
+
     def assert_notification(self, type='success', assert_text=None):
         """
         Assert whether we have a notification of particular type

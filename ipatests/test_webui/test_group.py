@@ -95,12 +95,11 @@ class test_group(UI_driver):
         self.leading_spaces_in_group_description()
 
     def empty_group_name(self):
-        expected_error = 'Required field'
         self.navigate_to_entity(group.ENTITY)
         self.facet_button_click('add')
         self.dialog_button_click('add')
         elem = self.find(".widget[name='cn']")
-        self.assert_field_validation(expected_error, parent=elem)
+        self.assert_field_validation_required(elem)
         self.dialog_button_click('cancel')
 
     def invalid_group_name(self):
