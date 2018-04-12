@@ -1303,7 +1303,7 @@ class UI_driver(object):
         # delete if exists, ie. from previous test fail
 
         if pre_delete:
-            self.delete_record(pkeys)
+            self.delete(entity, data, navigate=False)
 
         # current row count
         self.wait_for_request(0.5)
@@ -1370,7 +1370,7 @@ class UI_driver(object):
 
         # delete record
         if delete:
-            self.delete_record(pkeys)
+            self.delete(entity, data, navigate=False)
             new_count = len(self.get_rows())
             self.assert_row_count(count, new_count)
 
