@@ -15,6 +15,21 @@ from ipatests.pytest_plugins.integration import tasks
 
 config = get_global_config()
 
+
+class Test1ReplDomLvl0(IntegrationTest):
+
+    domain_level = 0
+    num_replicas = 1
+    topology = 'line'
+
+    @classmethod
+    def install(cls, mh):
+        tasks.install_master(cls.master, setup_dns=True)
+
+    def test_replica0_ipa_ca_install(self):
+        tasks.install_ca(self.replicas[0])
+
+
 class InstallTestBase1(IntegrationTest):
 
     num_replicas = 3
