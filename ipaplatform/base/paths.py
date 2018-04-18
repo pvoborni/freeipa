@@ -323,6 +323,7 @@ class BasePathNamespace(object):
     IPAREPLICA_CA_INSTALL_LOG = "/var/log/ipareplica-ca-install.log"
     IPAREPLICA_CONNCHECK_LOG = "/var/log/ipareplica-conncheck.log"
     IPAREPLICA_INSTALL_LOG = "/var/log/ipareplica-install.log"
+    IPAREPLICA_PREPARE_LOG = "/var/log/ipareplica-prepare-{}.log"
     IPARESTORE_LOG = "/var/log/iparestore.log"
     IPASERVER_INSTALL_LOG = "/var/log/ipaserver-install.log"
     IPASERVER_KRA_INSTALL_LOG = "/var/log/ipaserver-kra-install.log"

@@ -21,6 +21,7 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
+from datetime import datetime
 import logging
 import os
 import shutil
@@ -77,6 +78,11 @@ class ReplicaPrepare(admintool.AdminTool):
     usage = "%prog [options] <replica-fqdn>"
 
     description = "Prepare a file for replica installation."
+
+    def setup_logging(self, log_file_mode='w'):
+        now = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+        self.log_file_name = paths.IPAREPLICA_PREPARE_LOG.format(now)
+        super(ReplicaPrepare, self).setup_logging(log_file_mode=log_file_mode)
 
     @classmethod
     def add_options(cls, parser):
