@@ -64,7 +64,8 @@ class test_netgroup(UI_driver):
         self.add_record(netgroup.ENTITY, netgroup.DATA_LONG_NAME, delete=True)
 
         # add single character netgroup name ticket#2671
-        self.add_record(netgroup.ENTITY, netgroup.DATA_SINGLE_CHAR, delete=True)
+        self.add_record(netgroup.ENTITY, netgroup.DATA_SINGLE_CHAR,
+                        delete=True)
 
         # add netgroup using enter
         self.add_record(netgroup.ENTITY, netgroup.DATA, negative=True)
