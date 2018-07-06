@@ -88,7 +88,7 @@ define(['dojo/_base/declare',
         /**
          * View this form is in.
          *
-         * Possible views: ['login', 'reset']
+         * Possible views: ['login', 'reset', 'reset_and_login']
          * @property {string}
          */
         view: 'login',
@@ -185,7 +185,7 @@ define(['dojo/_base/declare',
         },
 
         on_otp_change: function(event) {
-            if (this.view === 'login') return;
+            if (this.view === 'login' || this.view === 'reset') return;
             if (!event.value[0]) {
                 this.set_visible_buttons(['cancel', 'reset_and_login']);
             } else {
@@ -203,7 +203,7 @@ define(['dojo/_base/declare',
             if (this.view == 'login') {
                 this.login();
             } else {
-                this.login_and_reset();
+                this.login_and_reset(this.view == 'reset_and_login');
             }
         },
 
@@ -254,7 +254,7 @@ define(['dojo/_base/declare',
                     this.emit('logged_in');
                     password_f.set_value('');
                 } else if (result === 'password-expired') {
-                    this.set('view', 'reset');
+                    this.set('view', 'reset_and_login');
                     val_summary.add_info('login', this.password_expired);
                 } else if (result === 'krbprincipal-expired') {
                     password_f.set_value('');
@@ -284,7 +284,7 @@ define(['dojo/_base/declare',
             }.bind(this));
         },
 
-        login_and_reset: function() {
+        login_and_reset: function(login) {
 
             var val_summary = this.get_widget('validation');
             val_summary.remove('login');
@@ -311,12 +311,20 @@ define(['dojo/_base/declare',
                 psw_f.set_value('');
                 psw_f2.set_value('');
                 // do not login if otp is used because it will fail (reuse of OTP)
-                if (!otp) {
-                    psw_f.set_value(new_f.get_value());
-                    this.login();
+                if (login === true) {
+                    if (!otp) {
+                        psw_f.set_value(new_f.get_value());
+                        this.login();
+                    }
+                    val_summary.add_success('login', this.password_change_complete);
+                    this.set('view', 'login');
+                } else {
+                    otp_f.set_value('');
+                    new_f.set_value('');
+                    ver_f.set_value('');
+                    val_summary.add_success('login', this.password_change_complete);
                 }
-                val_summary.add_success('login', this.password_change_complete);
-                this.set('view', 'login');
+
             } else {
                 otp_f.set_value('');
                 new_f.set_value('');
@@ -363,6 +371,8 @@ define(['dojo/_base/declare',
         refresh: function() {
             if (this.view === 'reset') {
                 this.show_reset_view();
+            } else if (this.view === 'reset_and_login') {
+                    this.show_reset_and_login_view();
             } else {
                 this.show_login_view();
             }
@@ -392,8 +402,19 @@ define(['dojo/_base/declare',
         show_reset_view: function() {
 
             this.set_reset_aside_text();
-            this.set_visible_buttons(['cancel', 'reset_and_login']);
-            this.use_fields(['username_r', 'current_password', 'otp', 'new_password', 'verify_password']);
+            this.set_visible_buttons(['reset']);
+            this.use_fields(['username', 'current_password', 'otp', 'new_password', 'verify_password']);
+
+            var val_summary = this.get_widget('validation');
+
+            this.get_widget('username').focus_input();
+        },
+
+        show_reset_and_login_view: function() {
+
+            this.set_reset_aside_text();
+            this.set_visible_buttons(['cancel', 'reset']);
+            this.use_fields(['username', 'current_password', 'otp', 'new_password', 'verify_password']);
 
             var val_summary = this.get_widget('validation');
 
