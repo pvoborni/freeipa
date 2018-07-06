@@ -66,6 +66,11 @@ define([
         //logout_url: '/ipa/session/json',
 
         /**
+         * certificate/smartcard authentication url
+         */
+        x509_login_url: '/ipa/session/login_x509',
+
+        /**
          * Password reset url
          */
         reset_psw_url: '/ipa/session/change_password',
