@@ -307,6 +307,16 @@ class i18n_messages(Command):
             "internal_error": _("Internal Error"),
             "ipa_error": _("IPA Error"),
             "no_response": _("No response"),
+            "unauthorized": _(
+                "<h1>Unable to verify your Kerberos credentials</h1>"
+                "<p>Please make sure that you have valid Kerberos tickets "
+                "(obtainable via <strong>kinit</strong>), and that you have "
+                "configured your browser correctly.</p>"
+                "<h2>Browser configuration</h2>"
+                "<div id=\"first-time\">"
+                "<p> If this is your first time, please <a href="
+                "\"ssbrowser.html\">configure your browser</a>.</p>"
+                "</div>"),
             "unknown_error": _("Unknown Error"),
             "url": _("URL"),
         },
