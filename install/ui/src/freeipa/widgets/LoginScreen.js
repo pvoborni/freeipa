@@ -62,6 +62,8 @@ define(['dojo/_base/declare',
         cert_msg: "<i class=\"fa fa-info-circle\"></i> To log in with <strong>certificate</strong>," +
               " please make sure you have valid personal certificate. ",
 
+        continue_msg: "Continue to next page",
+
         form_auth_failed: "Login failed due to an unknown reason",
 
         krb_auth_failed: "Authentication with Kerberos failed",
@@ -71,6 +73,8 @@ define(['dojo/_base/declare',
         password_expired: "Your password has expired. Please enter a new password.",
 
         password_change_complete: "Password change complete",
+
+        redirect_msg: "You will be redirected in ${count}s",
 
         krbprincipal_expired: "Kerberos Principal you entered is expired",
 
@@ -282,6 +286,53 @@ define(['dojo/_base/declare',
             }.bind(this));
         },
 
+        parse_uri: function() {
+            var opts = {};
+            if (window.location.search.length > 1) {
+                var couples = window.location.search.substr(1).split("&");
+                for (var i=0,l=couples.length; i < l; i++) {
+                    var couple = couples[i].split("=");
+                    var key = decodeURIComponent(couple[0]);
+                    var value = couple.length > 1 ? decodeURIComponent(couple[1]) : '';
+                    opts[key] = value;
+                }
+            }
+            return opts;
+        },
+
+        redir_count_down: function(redir_url, redir_delay) {
+            var val_summary = this.get_widget('validation');
+            val_summary.add_info('redirect',
+                this.redirect_msg.replace('${count}', Math.max(redir_delay, 0)));
+
+            if (redir_delay <= 0) {
+                window.location = redir_url;
+                return;
+            }
+            window.setTimeout(this.redir_count_down.bind(this), 1000,
+                redir_url, redir_delay-1);
+        },
+
+        redirect: function() {
+            var opts = this.parse_uri();
+            var url = opts['url'];
+            var delay = parseInt(opts['delay'], 10);
+
+            var val_summary = this.get_widget('validation');
+            // button for manual redirection
+            if (url) {
+                val_summary.add_success('login',
+                "".concat(this.password_change_complete,
+                ' <a href="', url, '">', this.continue_msg, '</a>'));
+            } else {
+                return;
+            }
+
+            if (delay <= 0 || delay > 0) { // NaN check
+                this.redir_count_down(url, delay);
+            }
+        },
+
         login_and_reset: function(login) {
 
             var val_summary = this.get_widget('validation');
@@ -321,6 +372,7 @@ define(['dojo/_base/declare',
                     new_f.set_value('');
                     ver_f.set_value('');
                     val_summary.add_success('login', this.password_change_complete);
+                    this.redirect();
                 }
 
             } else {
