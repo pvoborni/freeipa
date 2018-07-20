@@ -54,24 +54,6 @@ define(['dojo/_base/declare',
                 construct.place(this.migrate_btn_node, container);
             },
 
-            post_create_fields: function() {
-                var u_f = this.get_field('username');
-                var p_f = this.get_field('password');
-
-                u_f.on('value-change', this.on_form_change.bind(this));
-                p_f.on('value-change', this.on_form_change.bind(this));
-                this.on_form_change();
-            },
-
-            on_form_change: function(event) {
-                var u_f = this.get_field('username');
-                var p_f = this.get_field('password');
-                var required = !util.is_empty(u_f.get_value()) ||
-                    !util.is_empty(p_f.get_value());
-                u_f.set_required(required);
-                p_f.set_required(required);
-            },
-
             on_confirm: function() {
                 this.migrate();
             },
@@ -142,8 +124,8 @@ define(['dojo/_base/declare',
                     dataType: 'html',
                     async: false,
                     type: 'POST',
-                    success: success_handler,
-                    error: error_handler
+                    success: success_handler.bind(this),
+                    error: error_handler.bind(this)
                 };
 
                 topic.publish('rpc-start');
@@ -198,6 +180,7 @@ define(['dojo/_base/declare',
                 name: 'username',
                 label: text.get('@i18n:login.username', "Username"),
                 placeholder: text.get('@i18n:login.username', "Username"),
+                required: true,
                 show_errors: false,
                 undo: false
             },
@@ -206,6 +189,7 @@ define(['dojo/_base/declare',
                 name: 'password',
                 label: text.get('@i18n:login.password', "Password"),
                 placeholder: text.get('@i18n:login.password', 'Password'),
+                required: true,
                 show_errors: false,
                 undo: false
             }
