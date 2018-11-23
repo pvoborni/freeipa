@@ -1,0 +1,102 @@
+topologies:
+  build: &build
+    name: build
+    cpu: 2
+    memory: 3800
+  ipaserver: &ipaserver
+    name: ipaserver
+    cpu: 2
+    memory: 4800
+
+jobs:
+  fedora-28/build:
+    requires: []
+    priority: 100
+    job:
+      class: Build
+      args:
+        git_repo: '{git_repo}'
+        git_refspec: '{git_refspec}'
+        template: &ci-master-f28
+          name: freeipa/ci-master-f28
+          version: 0.1.9
+        timeout: 1800
+        topology: *build
+
+  fedora-28/test_webui_network:
+    requires: [fedora-28/build]
+    priority: 50
+    job:
+      class: RunWebuiTests
+      args:
+        build_url: '{fedora-28/build_url}'
+        test_suite: >-
+          test_webui/test_automount.py
+          test_webui/test_dns.py
+          test_webui/test_vault.py
+        template: *ci-master-f28
+        timeout: 3600
+        topology: *ipaserver
+
+  fedora-28/test_webui_policy:
+    requires: [fedora-28/build]
+    priority: 50
+    job:
+      class: RunWebuiTests
+      args:
+        build_url: '{fedora-28/build_url}'
+        test_suite: >-
+          test_webui/test_hbac.py
+          test_webui/test_krbtpolicy.py
+          test_webui/test_pwpolicy.py
+          test_webui/test_selinuxusermap.py
+          test_webui/test_sudo.py
+        template: *ci-master-f28
+        timeout: 3600
+        topology: *ipaserver
+
+  fedora-28/test_webui_rbac:
+    requires: [fedora-28/build]
+    priority: 50
+    job:
+      class: RunWebuiTests
+      args:
+        build_url: '{fedora-28/build_url}'
+        test_suite: >-
+          test_webui/test_delegation.py
+          test_webui/test_rbac.py
+          test_webui/test_selfservice.py
+        template: *ci-master-f28
+        timeout: 3600
+        topology: *ipaserver
+
+  fedora-28/test_webui_server:
+    requires: [fedora-28/build]
+    priority: 50
+    job:
+      class: RunWebuiTests
+      args:
+        build_url: '{fedora-28/build_url}'
+        test_suite: >-
+          test_webui/test_config.py
+          test_webui/test_range.py
+          test_webui/test_realmdomains.py
+          test_webui/test_trust.py
+        template: *ci-master-f28
+        timeout: 3600
+        topology: *ipaserver
+
+  fedora-28/test_webui_users:
+    requires: [fedora-28/build]
+    priority: 50
+    job:
+      class: RunWebuiTests
+      args:
+        build_url: '{fedora-28/build_url}'
+        test_suite: >-
+          test_webui/test_group.py
+          test_webui/test_user.py
+        template: *ci-master-f28
+        timeout: 3600
+        topology: *ipaserver
+
