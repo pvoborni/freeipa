@@ -31,8 +31,8 @@ pytest_plugins = [
     'ipatests.pytest_ipa.nose_compat',
 ]
 # The integration plugin is not available in client-only builds.
-if ipaserver is not None:
-    pytest_plugins.append('ipatests.pytest_ipa.integration')
+# if ipaserver is not None:
+pytest_plugins.append('ipatests.pytest_ipa.integration')
 
 
 MARKERS = [
