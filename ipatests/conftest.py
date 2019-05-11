@@ -101,6 +101,10 @@ def pytest_addoption(parser):
         help='Do not run tests that depends on IPA API',
         action='store_true',
     )
+    group.addoption(
+        '--logfile-dir', dest="logfile_dir", default=None,
+        help="Directory to store integration test logs in."
+    )
 
 
 def pytest_cmdline_main(config):

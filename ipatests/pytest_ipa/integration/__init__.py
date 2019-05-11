@@ -40,14 +40,6 @@ from . import tasks
 logger = logging.getLogger(__name__)
 
 
-def pytest_addoption(parser):
-    group = parser.getgroup("IPA integration tests")
-
-    group.addoption(
-        '--logfile-dir', dest="logfile_dir", default=None,
-        help="Directory to store integration test logs in.")
-
-
 def _get_logname_from_node(node):
     name = node.nodeid
     name = re.sub('\(\)/', '', name)      # remove ()/
